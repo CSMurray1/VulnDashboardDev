@@ -1629,11 +1629,6 @@ async function fetchTextWithFallback(url) {
   }
   throw new Error(`All fetch attempts failed for ${url}`);
 }
-  function loadKev() {
-  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60*60*1000) {
-    console.log('KEV cache still valid — skipping reload');
-    return kevCache.data;
-  }
 
   // Reset on each full reload attempt
   kevCache.loaded = false;
