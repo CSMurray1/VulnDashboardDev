@@ -857,9 +857,6 @@ const KEV_JSON_URLS = [
   'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json')
 ];
 
-let kevCache = { loaded: false, data: null, ts: 0 };
-
-
 // --- GLOBAL: CORS-tolerant text fetcher (single source of truth) ---
 async function fetchTextWithFallback(url) {
   const attempts = [
