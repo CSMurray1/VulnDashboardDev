@@ -864,8 +864,10 @@ async function loadVulnCheck() {
 }
 /* ---------- KEV ---------- */
 const KEV_JSON_URLS = [
-  'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',
-  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'
+  'https://raw.githubusercontent.com/cisagov/known-exploited-vulnerabilities/develop/known_exploited_vulnerabilities.json',  // ← GitHub mirror, often CORS-friendly
+  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',  // official
+  'https://corsproxy.io/?' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),  // reliable public proxy
+  'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json')
 ];
 let kevCache = { loaded:false, data:null, ts:0 };
 async function loadKEV() {
@@ -1557,7 +1559,38 @@ function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
   function loadNotified(){ try { const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); if (Array.isArray(arr)) arr.forEach(k => notified.add(k)); } catch {} }
   function persistNotified(){ try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(notified))); } catch {} }
   loadNotified();
-  let kevSet = null; let kevMap = null;
+  let kevSet = null;
+  let kevMap = null;
+  // Add this inside the watcher IIFE, before refreshKev / loadKev calls
+async function fetchTextWithFallback(url) {
+  const attempts = [
+    { name: 'direct',     getUrl: () => url },
+    { name: 'corsproxy.io', getUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}` },
+    { name: 'allorigins', getUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+    { name: 'jina',       getUrl: () => `https://r.jina.ai/${url.replace(/^https?:\/\//, '')}` }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      console.log(`KEV fetch attempt: ${attempt.name} for ${url}`);
+      const res = await fetch(attempt.getUrl(), {
+        mode: 'cors',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json,text/plain,*/*' }
+      });
+      if (res.ok) {
+        const text = await res.text();
+        console.log(`Success via ${attempt.name}`);
+        return text;
+      } else {
+        console.warn(`${attempt.name} HTTP ${res.status}`);
+      }
+    } catch (err) {
+      console.warn(`${attempt.name} failed: ${err.message}`);
+    }
+  }
+  throw new Error(`All fetch attempts failed for ${url}`);
+}
   function loadKev(){
     try { const arr = JSON.parse(localStorage.getItem(KEV_SET_KEY) || '[]'); kevSet = new Set(arr.map(s => s.toUpperCase())); } catch { kevSet = new Set(); }
     try { kevMap = JSON.parse(localStorage.getItem(KEV_MAP_KEY) || '{}') || {}; } catch { kevMap = {}; }
