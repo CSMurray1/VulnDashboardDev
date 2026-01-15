@@ -1764,6 +1764,7 @@ setInterval(displayFeeds, 10 * 60 * 1000);
       <h2 id="watcherTitle">CVE Watcher</h2>
       <label>CVEs to watch (comma or newline separated)<br><textarea id="watcherList" rows="6" placeholder="CVE-2024-12345\nCVE-2023-99999"></textarea></label>
       <label>Poll interval (minutes, default 30)<br><input id="watcherInterval" type="number" min="5" value="30"></label>
+      <label><input id="watcherSoundToggle" type="checkbox">Sound notifications</label>
       <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
         <button id="watcherSave" class="btn">Save &amp; Start</button>
         <button id="watcherStop" class="btn">Stop</button>
@@ -1772,7 +1773,6 @@ setInterval(displayFeeds, 10 * 60 * 1000);
         <button id="watcherKev" class="btn">Refresh KEV</button>
         <button id="watcherClose" class="btn">Close</button>
       </div>
-      <label>Sound notifications<br><input id="watcherSoundToggle" type="checkbox"></label>
       <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
     </div>`;
   document.body.appendChild(overlay);
