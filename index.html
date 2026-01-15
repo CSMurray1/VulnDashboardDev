@@ -171,10 +171,18 @@ main.cve-main {
   }
 }
 #cveDetails { grid-area: details; }
-#exploitationWatch { grid-area: watch; }
+#exploitationWatch {
+  display: flex;
+  flex-direction: column;
+  height: 100%;               /* ← Key: stretch to full grid cell height */
+}
+#exploitationWatch > header {
+  flex: 0 0 auto;             /* don't grow/shrink */
+}
 #vulncheckMonitor { grid-area: vulncheck; }
 #notableSources { grid-area: sources; }
 #relevantSearches { grid-area: relevant; }
+
 /* Panels */
 .panel {
   background: var(--panel-light);
@@ -476,11 +484,12 @@ body.dark #analysisModal > div {
 }
 /* Exploitation Watcher Scrollbar */
 #watchContent {
-  max-height: 320px;
-  overflow-y: auto;
-  border-radius: 6px;
+  flex: 1 1 auto;             /* grow to fill available space */
+  overflow-y: auto;           /* scrollbar appears only when content overflows */
+  max-height: none !important; /* remove the old 320px cap */
+  min-height: 120px;          /* optional: prevent collapsing too small when empty */
   padding: 12px;
-  background: #fafafa;
+  background: #fafafa;        /* keep your existing bg */
 }
 body.dark #watchContent {
   background: #1e1e1e;
@@ -494,6 +503,9 @@ body.dark #watchContent {
 }
 body.dark #watchContent::-webkit-scrollbar-thumb {
   background: #666;
+}
+body.dark #watchContent {
+  background: #1e1e1e;
 }
 </style>
 </head>
@@ -1619,6 +1631,47 @@ function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
       { name:"X (Twitter) — Live Search", url:"https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type:"x" }
     ];
   }
+  // Helper to fetch and parse CyCognito page (using your existing fetchTextWithFallback)
+async function fetchCyCognitoThreats() {
+  const url = 'https://www.cycognito.com/emerging-threats/';
+  try {
+    const html = await fetchTextWithFallback(url);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    // The page uses headings for CVEs — look for patterns like <hX>CVE-...</hX>
+    // Adjust selectors based on actual structure (inspect the page)
+    const threatSections = doc.querySelectorAll('h2, h3, h4'); // or more specific: '.threat-entry h2' if classed
+    const threats = [];
+    
+    threatSections.forEach(h => {
+      const text = h.textContent.trim();
+      const cveMatch = text.match(/CVE-\d{4}-\d{4,}/i);
+      if (!cveMatch) return;
+      
+      const cve = cveMatch[0].toUpperCase();
+      // Find sibling/next elements for published date (look for text like "Published: 01/08/2026")
+      let published = 'Unknown';
+      let next = h.nextElementSibling;
+      while (next) {
+        const dateMatch = next.textContent.match(/Published:\s*(\d{2}\/\d{2}\/\d{4})/i);
+        if (dateMatch) {
+          published = dateMatch[1];
+          break;
+        }
+        next = next.nextElementSibling;
+      }
+      
+      threats.push({ cve, published, title: text, link: url + '#' + cve.toLowerCase().replace(/-/g,'') }); // fake anchor or just url
+    });
+    
+    return threats;
+  } catch (e) {
+    console.warn('CyCognito fetch failed:', e);
+    return [];
+  }
+}
+  const CYC_STATE_KEY = 'cveWatcher.cyCognitoState'; // { lastThreats: [{cve, published}], lastCheck: timestamp }
   function norm(text) { return (text || '').replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-').toUpperCase(); }
   function buildCveRegex(cve) { const m = cve.match(/^CVE-(\d{4})-(\d{4,})$/i); if (!m) return null; const year = m[1], id = m[2]; return new RegExp(`CVE[\\s\\-]+${year}[\\s\\-]+${id}`, 'i'); }
   async function pageMentionsCve(url, cveUpper){ try { const html = await fetchTextWithFallback(url); const text = norm(new DOMParser().parseFromString(html, 'text/html').documentElement.textContent); const regex = buildCveRegex(cveUpper); return regex ? regex.test(text) : text.includes(norm(cveUpper)); } catch { return false; } }
@@ -1666,28 +1719,73 @@ function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
     }));
     return hits;
   }
-  async function poll(){
-    if (shouldRefreshKev()) { await refreshKev(); }
-    const list = parseList(localStorage.getItem(STORAGE_KEY));
-    if (!list.length) return;
-    const allHits = [];
-    for (const cve of list){ const hits = await fetchMentionsForCve(cve); allHits.push(...hits); }
-    if (allHits.length){
-      persistNotified();
-      const wc = document.getElementById('watchContent');
-      if (wc){
-        const html = allHits.map(r => {
-          const titleText = `${r.cve}: ${r.title || r.link}`;
-          const kinfo = r.kev ? kevInfo(r.cve) : null;
-          const vendorProdCve = kinfo ? [kinfo.vendor, kinfo.product, r.cve].filter(Boolean).join(' · ') : r.cve;
-          const metaLine = `${vendorProdCve}${r.source ? ' · ' + r.source : ''} · ${new Date().toLocaleString()}`;
-          return `<div class="item"><div class="title">${linkRow(r.link, titleText)}${kevBadge(r.kev)}</div><div class="meta">${metaLine}</div></div>`;
-        }).join('');
-        wc.insertAdjacentHTML('afterbegin', html);
-      }
-      showNotification(allHits.slice(0,3));
-    }
+async function poll() {
+  if (shouldRefreshKev()) { await refreshKev(); }
+
+  const list = parseList(localStorage.getItem(STORAGE_KEY));
+  // No watched CVEs? → exit early (but we can still check CyCognito independently if desired)
+  // const allHits = [];   ← keep this if you want to collect everything together
+
+  const allHits = [];
+
+  // Your existing CVE watcher logic
+  for (const cve of list) {
+    const hits = await fetchMentionsForCve(cve);
+    allHits.push(...hits);
   }
+
+  // ────────────────────────────────────────────────
+  // ADD THIS BLOCK HERE: Check CyCognito Emerging Threats
+  // It runs every poll interval, regardless of your CVE list
+  // (You could add a toggle later if you want to optionalize it)
+  const cyHits = await checkCyCognito();
+  allHits.push(...cyHits);
+  // ────────────────────────────────────────────────
+
+  if (allHits.length) {
+    persistNotified();
+
+    const wc = document.getElementById('watchContent');
+    if (wc) {
+      const html = allHits.map(r => {
+        const titleText = `${r.cve ? r.cve + ': ' : ''}${r.title || r.link}`;
+        const kinfo = r.kev ? kevInfo(r.cve) : null;
+        const vendorProdCve = kinfo 
+          ? [kinfo.vendor, kinfo.product, r.cve].filter(Boolean).join(' · ') 
+          : (r.cve || 'CyCognito Update');
+        const metaLine = `${vendorProdCve}${r.source ? ' · ' + r.source : ''} · ${new Date().toLocaleString()}`;
+        return `<div class="item"><div class="title">${linkRow(r.link, titleText)}${kevBadge(r.kev)}</div><div class="meta">${metaLine}</div></div>`;
+      }).join('');
+
+      wc.insertAdjacentHTML('afterbegin', html);
+    }
+
+    showNotification(allHits.slice(0, 3));
+  }
+}
+  async function checkCyCognito() {
+  const threats = await fetchCyCognitoThreats();
+  if (!threats.length) return [];
+  
+  let state = JSON.parse(localStorage.getItem(CYC_STATE_KEY) || '{}');
+  const lastThreats = state.lastThreats || [];
+  const lastCVEs = new Set(lastThreats.map(t => t.cve));
+  
+  const newHits = threats.filter(t => !lastCVEs.has(t.cve));
+  
+  // Update state
+  state.lastThreats = threats.map(t => ({cve: t.cve, published: t.published}));
+  state.lastCheck = Date.now();
+  localStorage.setItem(CYC_STATE_KEY, JSON.stringify(state));
+  
+  return newHits.map(hit => ({
+    cve: hit.cve,
+    title: `CyCognito Emerging Threat: ${hit.title}`,
+    link: hit.link || 'https://www.cycognito.com/emerging-threats/',
+    source: 'CyCognito Emerging Threats',
+    kev: isKev(hit.cve) // reuse your KEV check
+  }));
+}
   let timer = null;
   function start(){ const minutes = Math.max(5, Number(localStorage.getItem(INTERVAL_KEY) || 30)); if (timer) clearInterval(timer); timer = setInterval(poll, minutes*60*1000); poll(); }
   function stop(){ if (timer) { clearInterval(timer); timer=null; } }
