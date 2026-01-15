@@ -141,13 +141,11 @@ body.dark .btn {
 }
 /* Dashboard 1 Layout */
 main.cve-main {
-  padding: 24px;
   display: grid;
-  grid-template-columns: 1fr 1fr 320px;
+  grid-template-columns: 1fr 1fr auto; /* auto instead of fixed width */
   grid-template-areas:
     "details details watch"
     "sources relevant vulncheck";
-  gap: 20px;
 }
 @media (max-width:1400px) {
   main.cve-main {
@@ -174,10 +172,16 @@ main.cve-main {
 #exploitationWatch {
   display: flex;
   flex-direction: column;
-  height: 100%;               /* ← Key: stretch to full grid cell height */
+  height: 100%; /* Fill its grid cell */
+  min-height: 120px; /* Prevent collapsing */
+  max-height: none; /* Remove old fixed cap */
 }
 #exploitationWatch > header {
   flex: 0 0 auto;             /* don't grow/shrink */
+}
+#watchContent:empty {
+  min-height: 120px; /* fallback */
+  max-height: 200px; /* roughly 5 items */
 }
 #vulncheckMonitor { grid-area: vulncheck; }
 #notableSources { grid-area: sources; }
@@ -484,12 +488,11 @@ body.dark #analysisModal > div {
 }
 /* Exploitation Watcher Scrollbar */
 #watchContent {
-  flex: 1 1 auto;             /* grow to fill available space */
-  overflow-y: auto;           /* scrollbar appears only when content overflows */
-  max-height: none !important; /* remove the old 320px cap */
-  min-height: 120px;          /* optional: prevent collapsing too small when empty */
+  flex: 1 1 auto; /* Grow to fill available space */
+  overflow-y: auto; /* Always allow scrolling */
+  max-height: none; /* Remove hard cap */
   padding: 12px;
-  background: #fafafa;        /* keep your existing bg */
+  background: #fafafa;
 }
 body.dark #watchContent {
   background: #1e1e1e;
@@ -501,6 +504,13 @@ body.dark #watchContent {
   background: #aaa;
   border-radius: 4px;
 }
+#watchContent::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 4px;
+}
+body.dark #watchContent::-webkit-scrollbar-thumb {
+  background: #666;
+}
 body.dark #watchContent::-webkit-scrollbar-thumb {
   background: #666;
 }
@@ -509,6 +519,8 @@ body.dark #watchContent {
 }
 </style>
 </head>
+<!-- CVE Watcher sound (hidden) -->
+<audio id="watcherSound" preload="auto" src="httpshort.ogg</audio>
 <body class="light">
 <button class="mode" onclick="toggleMode()">Dark Mode</button>
 <nav>
@@ -1762,19 +1774,62 @@ setInterval(displayFeeds, 10 * 60 * 1000);
     return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`;
   }
 
-  function showNotification(items) {
-    const dark = document.body.classList.contains('dark');
-    notif.innerHTML = items.map(i => {
-      const kinfo = i.kev ? kevInfo(i.cve) : null;
-      const vendorProductCve = kinfo
-        ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ')
-        : i.cve;
-      const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
-      return `<div style="background:${dark?'#1e1e1e':'#fff'};color:inherit;border:1px solid ${dark?'var(--border-dark)':'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
-    }).join('');
-    notif.style.display = 'block';
-    setTimeout(() => { notif.style.display = 'none'; }, 15000);
-  }
+
+// --- Sound toggles & rate limit ---
+let __watcherSoundLastTs = 0;
+// default to enabled unless user turned it off
+if (localStorage.getItem('watcherSoundEnabled') === null) {
+  localStorage.setItem('watcherSoundEnabled', 'true');
+}
+
+function queueWatcherSound(count) {
+  if (!count) return;
+
+  // respect user toggle
+  if (localStorage.getItem('watcherSoundEnabled') === 'false') return;
+
+  // rate-limit: avoid multiple beeps if many items arrive at once
+  const now = Date.now();
+  if (now - __watcherSoundLastTs < 5000) return; // 5 seconds min gap
+  __watcherSoundLastTs = now;
+
+  const audio = document.getElementById('watcherSound');
+  if (!audio) return;
+
+  // ensure volume sane
+  audio.volume = 0.7;
+  audio.currentTime = 0;
+  audio.play().catch(() => {
+    // Browser blocked autoplay. Ask for a one-time user gesture to unlock.
+    const unlock = () => {
+      audio.currentTime = 0;
+      audio.play().catch(() => {/* ignore */});
+    };
+    document.addEventListener('click', unlock, { once: true });
+    document.addEventListener('keydown', unlock, { once: true });
+  });
+}
+
+function showNotification(items) {
+  const dark = document.body.classList.contains('dark');
+  notif.innerHTML = items.map(i => {
+    const kinfo = i.kev ? kevInfo(i.cve) : null;
+    const vendorProductCve = kinfo
+      ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ')
+      : i.cve;
+    const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
+    return `<div style="background:${dark?'#1e1e1e':'#fff'};color:inherit;border:1px solid ${dark?'var(--border-dark)':'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
+  }).join('');
+
+  // show bubble
+  notif.style.display = 'block';
+
+  // 🔊 play a single beep for this batch of items
+  queueWatcherSound(items.length);
+
+  // auto-hide after a moment
+  setTimeout(() => { notif.style.display = 'none'; }, 15000);
+}
 
   function parseList(raw) {
     return (raw || '')
