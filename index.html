@@ -1389,12 +1389,24 @@ const quickLinksHtml = [
   }
 }
 /* ---------- Exploitation Watch ---------- */
-async function fetchTextWithFallback(url) {
-  const tryFetch = async (u) => { const r = await fetch(u, { cache: 'no-store', mode: 'cors' }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.text(); };
-  const proxJina = (u) => 'https://r.jina.ai/http/' + u.replace(/^https?:\/\//, '');
-  const proxAor = (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
-  try { return await tryFetch(url); }
-  catch (e1) { try { return await tryFetch(proxJina(url)); } catch (e2) { try { return await tryFetch(proxAor(url)); } catch (e3) { throw e3; } } }
+async function fetchTextWithBetterFallback(url) {
+  const proxies = [
+    url => url,                               // direct first
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,  // new free proxy
+    url => `https://r.jina.ai/${url}`,        // drop http:// prefix if needed
+  ];
+
+  for (const proxy of proxies) {
+    try {
+      const target = proxy(url);
+      const res = await fetch(target, { mode: 'cors', cache: 'no-store' });
+      if (res.ok) return await res.text();
+    } catch (e) {
+      console.warn(`Proxy ${proxy.name || 'direct'} failed for ${url}:`, e);
+    }
+  }
+  throw new Error(`All proxies failed for ${url}`);
 }
 async function loadExploitationWatch() {
   const now = Date.now(); const tenDaysMs = 10*24*60*60*1000; let out=[];
@@ -1551,6 +1563,9 @@ function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
     try { kevMap = JSON.parse(localStorage.getItem(KEV_MAP_KEY) || '{}') || {}; } catch { kevMap = {}; }
   }
   loadKev();
+  if (shouldRefreshKev()) {
+    refreshKev();               // ← call it here, inside the scope
+  }
   function minutesSince(ts){ if (!ts) return Infinity; const then = new Date(ts).getTime(); if (Number.isNaN(then)) return Infinity; return (Date.now() - then) / (60*1000); }
   function shouldRefreshKev(){ const last = localStorage.getItem(KEV_FETCH_KEY); return minutesSince(last) >= KEV_REFRESH_MINUTES || !kevSet || kevSet.size === 0; }
   async function refreshKev(){
