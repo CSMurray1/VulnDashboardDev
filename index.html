@@ -618,12 +618,6 @@ function linkRow(url, label) {
   return `<a href="${url}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>`;
 }
 
-function toast(msg) {
-  const t = document.getElementById("toast");
-  t.textContent = msg;
-  t.style.display = "block";
-  setTimeout(() => t.style.display = "none", 3000);
-}  
 /* ---------- CWE Builder ---------- */
 function buildCweHtml(cveJson, nvdJson) {
   const rows = [];
@@ -872,8 +866,46 @@ const KEV_JSON_URLS = [
 
 let kevCache = { loaded: false, data: null, ts: 0 };
 
+
+// --- GLOBAL: CORS-tolerant text fetcher (single source of truth) ---
+async function fetchTextWithFallback(url) {
+  const attempts = [
+    { name: 'direct',        getUrl: () => url },
+    { name: 'corsproxy.io',  getUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}` },
+    { name: 'allorigins',    getUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+    { name: 'jina',          getUrl: () => `https://r.jina.ai/${url.replace(/^https?:\/\//, '')}` }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await fetch(attempt.getUrl(), {
+        mode: 'cors',
+        cache: 'no-store',
+        headers: { 'Accept': 'application/json,text/plain,*/*' }
+      });
+      if (res.ok) {
+        return await res.text();
+      }
+      console.warn(`${attempt.name} HTTP ${res.status}`);
+    } catch (err) {
+      console.warn(`${attempt.name} failed: ${err.message}`);
+    }
+  }
+  throw new Error(`All fetch attempts failed for ${url}`);
+}
+
+const KEV_JSON_URLS = [
+  'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',
+  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
+  'https://corsproxy.io/?' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),
+  'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json')
+];
+
+let kevCache = { loaded: false, data: null, ts: 0 };
+
 async function loadKEV() {
-  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 3600000) {
+  // Cache: 60 minutes
+  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60 * 60 * 1000) {
     console.log('KEV cache fresh');
     return kevCache.data;
   }
@@ -881,26 +913,48 @@ async function loadKEV() {
   for (const url of KEV_JSON_URLS) {
     try {
       const text = await fetchTextWithFallback(url);
-      const json = JSON.parse(text);
-      let vulns = Array.isArray(json) ? json : (json.vulnerabilities || []);
-      kevCache.data = vulns;
-      kevCache.loaded = true;
-      kevCache.ts = Date.now();
+
+      // Quick JSON sanity check: must start with '{' or '['
+      const trimmed = (text || '').trim();
+      if (!trimmed || !/^[\[{]/.test(trimmed)) {
+        console.warn(`KEV ${url} returned non-JSON payload (${trimmed.slice(0, 60)}...)`);
+        continue;
+      }
+
+      let json;
+      try {
+        json = JSON.parse(trimmed);
+      } catch (parseErr) {
+        console.warn(`KEV ${url} parse error: ${parseErr.message}`);
+        continue;
+      }
+
+      const vulns = Array.isArray(json) ? json : (json.vulnerabilities || []);
+      if (!Array.isArray(vulns)) {
+        console.warn(`KEV ${url} unexpected structure — no 'vulnerabilities' array`);
+        continue;
+      }
+
+      kevCache = { loaded: true, data: vulns, ts: Date.now() };
       console.log(`KEV loaded (${vulns.length} entries)`);
       return vulns;
     } catch (err) {
-      console.warn(`KEV ${url} failed:`, err.message);
+      console.warn(`KEV ${url} failed: ${err.message}`);
     }
   }
-  kevCache.loaded = true;
-  kevCache.data = [];
+
+  // Fallthrough: fail-safe
+  kevCache = { loaded: true, data: [], ts: Date.now() };
+  console.error('All KEV sources failed — proceeding without KEV');
   return [];
 }
 
+// Keep this small helper as-is
 function getKevEntry(cveId) {
   if (!kevCache.loaded || !kevCache.data) return null;
   const up = cveId.toUpperCase();
   return kevCache.data.find(e => (e.cveID || e.cveId || '').toUpperCase() === up) || null;
+}
 }/* ---------- SSVC helpers ---------- */
 /* [unchanged helpers: normalizeSsvcValue, capFirst, extractSsvcDeep] */
 function normalizeSsvcValue(val) { return (val || 'N/A').toLowerCase().replace(/^(active|none|proof-of-concept|sporadic)$/i, m => m.toLowerCase()); }
@@ -924,9 +978,6 @@ function extractSsvcDeep(obj) {
   return decisionPoints;
 }
 /* ---------- Vendor/Product helpers ---------- */
-/* [unchanged helpers: severityFromScore, classFromScore, tokensFromQuery, cpeTokensMatch, vulnMatchesTokens, fetchNvdCvesByKeyword, renderVendorProductResults, runVendorProductSearch] */
-function severityFromScore(score) { return score < 4 ? 'Low' : score < 7 ? 'Medium' : score < 9 ? 'High' : 'Critical'; }
-function classFromScore(score) { return score < 4 ? 'low' : score < 7 ? 'medium' : score < 9 ? 'high' : 'critical'; }
 function tokensFromQuery(query) { return query.toLowerCase().split(/\s+/).filter(t => t.length > 1); }
 function cpeTokensMatch(cpe, tokens) { if (!cpe) return false; const parts = cpe.toLowerCase().split(':'); return tokens.every(t => parts.some(p => p.includes(t))); }
 function vulnMatchesTokens(vuln, tokens) { const desc = vuln?.cve?.descriptions?.[0]?.value?.toLowerCase() || ''; const refs = vuln?.cve?.references?.flatMap(r => r.url.toLowerCase() || []) || []; return tokens.every(t => desc.includes(t) || refs.some(u => u.includes(t))); }
@@ -987,22 +1038,16 @@ function getSeverityChip(score) {
 }
 
 function getKevBadges(cveId) {
-  if (!cveId || typeof cveId !== 'string' || !cveId.startsWith('CVE-')) {
-    return '';
-  }
+  if (!cveId || typeof cveId !== 'string' || !cveId.startsWith('CVE-')) return '';
+  if (!kevCache.loaded || !Array.isArray(kevCache.data)) return ''; // ← guard
 
-  const entry = getKevEntry(cveId);  // now sync
-
-  if (!entry || !entry.cveID) {
-    return '';
-  }
+  const entry = getKevEntry(cveId);
+  if (!entry || !entry.cveID) return '';
 
   let badges = `<span class="chip critical" style="background:#a60000; margin-left:8px;">KEV</span>`;
-
-  if (entry.knownRansomwareCampaignUse === 'Known') {
+  if (String(entry.knownRansomwareCampaignUse).toLowerCase() === 'known') {
     badges += `<span class="chip yes" style="margin-left:4px;">Ransomware</span>`;
   }
-
   return badges;
 }
   
@@ -1529,25 +1574,39 @@ const feeds = [
   { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
   { name:"Zero Day Initiative", url:"https://www.zerodayinitiative.com/rss/published/" }
 ];
+
 async function fetchFeed(feedUrl) {
-  try { const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`); const data = await response.json(); return Array.isArray(data.items) ? data.items.slice(0, 5) : []; }
-  catch (error) { console.error(`Error fetching feed: ${feedUrl}`, error); return []; }
+  try {
+    const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`);
+    if (!response.ok) {
+      console.warn(`rss2json ${feedUrl} HTTP ${response.status}`);
+      return [];
+    }
+    const data = await response.json();
+    return Array.isArray(data.items) ? data.items.slice(0, 5) : [];
+  } catch (error) {
+    console.error(`rss2json error: ${feedUrl}`, error);
+    return [];
+  }
 }
+
 async function displayFeeds() {
-  const container = document.getElementById("feed-container"); container.innerHTML = "";
+  const container = document.getElementById("feed-container");
+  if (!container) return;
+  container.innerHTML = "";
+
   for (const feed of feeds) {
     const articles = await fetchFeed(feed.url);
-    if (articles.length > 0) {
-      const feedDiv = document.createElement("div"); feedDiv.className = "feed";
-      const listHtml = articles.map(article => `<li>${linkRow(article.link, article.title)}</li>`).join("");
-      feedDiv.innerHTML = `<h2>${feed.name}</h2><ul>${listHtml}</ul>`;
-      container.appendChild(feedDiv);
-    }
+    if (!articles.length) continue;
+
+    const feedDiv = document.createElement("div");
+    feedDiv.className = "feed";
+    const listHtml = articles.map(article => `<li>${linkRow(article.link, article.title)}</li>`).join("");
+    feedDiv.innerHTML = `<h2>${feed.name}</h2><ul>${listHtml}</ul>`;
+    container.appendChild(feedDiv);
   }
 }
 setInterval(displayFeeds, 10 * 60 * 1000);
-// Helper to test CVE format
-function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
 // Main CVE search flow
 /* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
 ;(async () => {
@@ -2137,7 +2196,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadExploitationWatch();
   displayFeeds();
   initInlineAnalysis();
-  bindSearchHandlers();
   
   // Search handlers
   document.getElementById("go")?.addEventListener("click", handleSearch);
