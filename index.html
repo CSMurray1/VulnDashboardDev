@@ -871,13 +871,52 @@ const KEV_JSON_URLS = [
 ];
 let kevCache = { loaded:false, data:null, ts:0 };
 async function loadKEV() {
-  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60*60*1000) return kevCache.data;
-  for (const url of KEV_JSON_URLS) {
-    try { const res = await fetch(url, { cache:'no-store' }); if (!res.ok) continue; const json = await res.json(); kevCache.data = Array.isArray(json) ? json : (json.vulnerabilities || json); kevCache.loaded = true; kevCache.ts = Date.now(); return kevCache.data; } catch {}
+  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60*60*1000) {
+    console.log('KEV cache still fresh, skipping reload');
+    return kevCache.data;
   }
-  throw new Error('Unable to load CISA KEV data');
-}
-function getKevEntry(cveId) {
+
+  const urls = [
+    'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',
+    'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'
+  ];
+
+  for (const url of urls) {
+    try {
+      console.log(`Loading KEV from ${url}`);
+      const text = await fetchTextWithFallback(url);
+      console.log(`Fetched KEV text (length: ${text.length})`);
+
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (parseErr) {
+        console.error(`JSON parse failed for ${url}:`, parseErr);
+        continue;
+      }
+
+      let vulnerabilities = json;
+      if (!Array.isArray(vulnerabilities)) {
+        vulnerabilities = json.vulnerabilities || [];
+        console.warn(`KEV JSON not array — using .vulnerabilities (${vulnerabilities.length} items)`);
+      }
+
+      kevCache.data = vulnerabilities;
+      kevCache.loaded = true;
+      kevCache.ts = Date.now();
+
+      console.log(`KEV cache loaded successfully from ${url} (${vulnerabilities.length} entries)`);
+      return vulnerabilities;
+    } catch (err) {
+      console.warn(`KEV load failed for ${url}:`, err.message);
+    }
+  }
+
+  console.error('All KEV sources failed — disabling KEV checks');
+  kevCache.loaded = true;  // prevent repeated spam
+  kevCache.data = [];
+  return [];
+}function getKevEntry(cveId) {
   if (!kevCache.loaded || !kevCache.data) {
     console.warn("KEV cache not loaded yet");
     return null;
@@ -1507,7 +1546,6 @@ const feeds = [
   { name:"Malware Traffic Analysis", url:"https://www.malware-traffic-analysis.net/blog-entries.rss" },
   { name:"McAfee Advanced Threat Research", url:"https://www.mcafee.com/blogs/tag/advanced-threat-research/feed/" },
   { name:"Microsoft Security Blog", url:"https://www.microsoft.com/security/blog/feed/" },
-  { name:"NVD CVE Feed (NIST)", url:"https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml" },
   { name:"SANS Internet Storm Center", url:"https://isc.sans.edu/rssfeed_full.xml" },
   { name:"Schneier on Security", url:"https://www.schneier.com/tag/cybersecurity/feed/" },
   { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
@@ -1591,10 +1629,58 @@ async function fetchTextWithFallback(url) {
   }
   throw new Error(`All fetch attempts failed for ${url}`);
 }
-  function loadKev(){
-    try { const arr = JSON.parse(localStorage.getItem(KEV_SET_KEY) || '[]'); kevSet = new Set(arr.map(s => s.toUpperCase())); } catch { kevSet = new Set(); }
-    try { kevMap = JSON.parse(localStorage.getItem(KEV_MAP_KEY) || '{}') || {}; } catch { kevMap = {}; }
+  function loadKev() {
+  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60*60*1000) {
+    console.log('KEV cache still valid — skipping reload');
+    return kevCache.data;
   }
+
+  // Reset on each full reload attempt
+  kevCache.loaded = false;
+  kevCache.data = null;
+
+  const urls = [
+    'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',  // Primary mirror
+    'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'              // Official
+  ];
+
+  // Try each source in order
+  for (const url of urls) {
+    try {
+      console.log(`Attempting KEV load from: ${url}`);
+      const text = await fetchTextWithFallback(url);
+      console.log(`KEV fetch success (text length: ${text.length})`);
+
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch (parseErr) {
+        console.error(`JSON parse error from ${url}:`, parseErr);
+        continue;
+      }
+
+      let vulns = Array.isArray(json) ? json : (json.vulnerabilities || []);
+      if (!Array.isArray(vulns)) {
+        console.warn(`Unexpected KEV structure from ${url} — no vulnerabilities array`);
+        continue;
+      }
+
+      kevCache.data = vulns;
+      kevCache.loaded = true;
+      kevCache.ts = Date.now();
+
+      console.log(`KEV successfully loaded from ${url} (${vulns.length} entries)`);
+      return vulns;
+    } catch (err) {
+      console.warn(`KEV load failed for ${url}: ${err.message}`);
+    }
+  }
+
+  console.error('All KEV sources failed — KEV disabled');
+  kevCache.loaded = true;   // Prevent repeated attempts
+  kevCache.data = [];
+  return [];
+}
   loadKev();
   if (shouldRefreshKev()) {
     refreshKev();               // ← call it here, inside the scope
