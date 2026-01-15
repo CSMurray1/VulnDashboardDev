@@ -938,7 +938,7 @@ function getKevEntry(cveId) {
   const up = cveId.toUpperCase();
   return kevCache.data.find(e => (e.cveID || e.cveId || '').toUpperCase() === up) || null;
 }
-}/* ---------- SSVC helpers ---------- */
+/* ---------- SSVC helpers ---------- */
 /* [unchanged helpers: normalizeSsvcValue, capFirst, extractSsvcDeep] */
 function normalizeSsvcValue(val) { return (val || 'N/A').toLowerCase().replace(/^(active|none|proof-of-concept|sporadic)$/i, m => m.toLowerCase()); }
 function capFirst(str) { return (str || '').charAt(0).toUpperCase() + str.slice(1); }
