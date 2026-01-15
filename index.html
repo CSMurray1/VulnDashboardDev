@@ -488,9 +488,11 @@ body.dark #analysisModal > div {
 }
 /* Exploitation Watcher Scrollbar */
 #watchContent {
-  flex: 1 1 auto; /* Grow to fill available space */
-  overflow-y: auto; /* Always allow scrolling */
-  max-height: none; /* Remove hard cap */
+  flex: 1 1 0%;             /* or flex: 1 1 0px */
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;            /* optional but often helps nested content */
+  flex-direction: column;
   padding: 12px;
   background: #fafafa;
 }
