@@ -519,9 +519,9 @@ body.dark #watchContent {
 }
 </style>
 </head>
-<!-- CVE Watcher sound (hidden) -->
-<audio id="watcherSound" preload="auto" src="httpshort.ogg</audio>
 <body class="light">
+<!-- CVE Watcher sound (hidden) -->
+<audio id="watcherSound" preload="auto" src="https://actions.google.com/sounds/v1/alarms/httpshort.ogg"></audio>
 <button class="mode" onclick="toggleMode()">Dark Mode</button>
 <nav>
   <button onclick="switchTab(0)" class="active">CVE Dashboard</button>
@@ -623,6 +623,18 @@ function linkRow(url, label) {
   return `<a href="${url}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>`;
 }
 
+// Initialize the sound toggle state
+const soundToggle = document.getElementById('watcherSoundToggle');
+if (soundToggle) {
+  const enabled = localStorage.getItem('watcherSoundEnabled') !== 'false';
+  soundToggle.checked = enabled;
+
+  soundToggle.addEventListener('change', () => {
+    localStorage.setItem('watcherSoundEnabled', soundToggle.checked ? 'true' : 'false');
+    toast && toast(soundToggle.checked ? 'Sound notifications enabled' : 'Sound notifications disabled');
+  });
+}
+  
 /* ---------- CWE Builder ---------- */
 function buildCweHtml(cveJson, nvdJson) {
   const rows = [];
@@ -1752,6 +1764,7 @@ setInterval(displayFeeds, 10 * 60 * 1000);
       <h2 id="watcherTitle">CVE Watcher</h2>
       <label>CVEs to watch (comma or newline separated)<br><textarea id="watcherList" rows="6" placeholder="CVE-2024-12345\nCVE-2023-99999"></textarea></label>
       <label>Poll interval (minutes, default 30)<br><input id="watcherInterval" type="number" min="5" value="30"></label>
+      <label>Sound notifications<br><input id="watcherSoundToggle" type="checkbox"></label>
       <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
         <button id="watcherSave" class="btn">Save &amp; Start</button>
         <button id="watcherStop" class="btn">Stop</button>
