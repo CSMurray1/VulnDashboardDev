@@ -571,13 +571,6 @@ function toast(msg) {
   t.style.display = "block";
   setTimeout(() => t.style.display = "none", 3000);
 }
-function linkRow(url, label) {
-  const safeLabel = label || url;
-  // Return an <a> tag with a proper `href`
-  return `
-    <a href="${url}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>
-  `;
-}
 function toggleMode() {
   document.body.classList.toggle('dark');
   const modeBtn = document.querySelector(".mode");
@@ -893,13 +886,6 @@ async function fetchTextWithFallback(url) {
   }
   throw new Error(`All fetch attempts failed for ${url}`);
 }
-
-const KEV_JSON_URLS = [
-  'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',
-  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
-  'https://corsproxy.io/?' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),
-  'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json')
-];
 
 let kevCache = { loaded: false, data: null, ts: 0 };
 
@@ -1665,34 +1651,6 @@ setInterval(displayFeeds, 10 * 60 * 1000);
 
   let kevSet = null;
   let kevMap = null;
-
-  // Local CORS-tolerant text fetcher used by refreshKev and other watcher helpers
-  async function fetchTextWithFallback(url) {
-    const attempts = [
-      { name: 'direct',     getUrl: () => url },
-      { name: 'corsproxy.io', getUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}` },
-      { name: 'allorigins', getUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
-      { name: 'jina',       getUrl: () => `https://r.jina.ai/${url.replace(/^https?:\/\//, '')}` }
-    ];
-
-    for (const attempt of attempts) {
-      try {
-        const res = await fetch(attempt.getUrl(), {
-          mode: 'cors',
-          cache: 'no-store',
-          headers: { 'Accept': 'application/json,text/plain,*/*' }
-        });
-        if (res.ok) {
-          return await res.text();
-        } else {
-          console.warn(`${attempt.name} HTTP ${res.status}`);
-        }
-      } catch (err) {
-        console.warn(`${attempt.name} failed: ${err.message}`);
-      }
-    }
-    throw new Error(`All fetch attempts failed for ${url}`);
-  }
 
   // ✅ Option B: Reuse the earlier-defined KEV loader (uses KEV_JSON_URLS and its own fallback)
   await loadKEV();
