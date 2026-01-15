@@ -1550,134 +1550,177 @@ setInterval(displayFeeds, 10 * 60 * 1000);
 function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
 // Main CVE search flow
 /* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
-;(() => {
+;(async () => {
+  // Create the button before we branch to file origin (ensures 'btn' exists)
+  const btn = document.createElement('button');
+  btn.id = 'watcherBtn';
+  btn.className = 'btn';
+  btn.textContent = 'CVE Watcher';
+
+  // If opened via file:// keep only the button injection and return
   if (IS_FILE_ORIGIN) {
-    function ensureWatcherButton(){
+    function ensureWatcherButton() {
       let hdr = document.querySelector('header.cve-header');
-      if (!hdr){ btn.style.position = 'fixed'; btn.style.top = '60px'; btn.style.right = '12px'; btn.style.zIndex = '1500'; document.body.appendChild(btn); }
-      else { hdr.appendChild(btn); }
+      if (!hdr) {
+        btn.style.position = 'fixed';
+        btn.style.top = '60px';
+        btn.style.right = '12px';
+        btn.style.zIndex = '1500';
+        document.body.appendChild(btn);
+      } else {
+        hdr.appendChild(btn);
+      }
     }
-    if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', ensureWatcherButton); } else { ensureWatcherButton(); }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', ensureWatcherButton);
+    } else {
+      ensureWatcherButton();
+    }
     return;
   }
+
   const STORAGE_KEY = 'cveWatcher.list';
   const INTERVAL_KEY = 'cveWatcher.interval';
   const NOTIFIED_KEY = 'cveWatcher.notified';
+
   const PAGE_SCAN_CAP = 8;
+
   const KEV_SET_KEY = 'cveWatcher.kevSet';
   const KEV_MAP_KEY = 'cveWatcher.kevMap';
   const KEV_FETCH_KEY = 'cveWatcher.kevFetchedAt';
   const KEV_REFRESH_MINUTES = 60;
+
   const notified = new Set();
-  function loadNotified(){ try { const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); if (Array.isArray(arr)) arr.forEach(k => notified.add(k)); } catch {} }
-  function persistNotified(){ try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(notified))); } catch {} }
+  function loadNotified() {
+    try {
+      const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]');
+      if (Array.isArray(arr)) arr.forEach(k => notified.add(k));
+    } catch {}
+  }
+  function persistNotified() {
+    try {
+      localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(notified)));
+    } catch {}
+  }
   loadNotified();
+
   let kevSet = null;
   let kevMap = null;
-  // Add this inside the watcher IIFE, before refreshKev / loadKev calls
-async function fetchTextWithFallback(url) {
-  const attempts = [
-    { name: 'direct',     getUrl: () => url },
-    { name: 'corsproxy.io', getUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}` },
-    { name: 'allorigins', getUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
-    { name: 'jina',       getUrl: () => `https://r.jina.ai/${url.replace(/^https?:\/\//, '')}` }
-  ];
 
-  for (const attempt of attempts) {
-    try {
-      console.log(`KEV fetch attempt: ${attempt.name} for ${url}`);
-      const res = await fetch(attempt.getUrl(), {
-        mode: 'cors',
-        cache: 'no-store',
-        headers: { 'Accept': 'application/json,text/plain,*/*' }
-      });
-      if (res.ok) {
-        const text = await res.text();
-        console.log(`Success via ${attempt.name}`);
-        return text;
-      } else {
-        console.warn(`${attempt.name} HTTP ${res.status}`);
-      }
-    } catch (err) {
-      console.warn(`${attempt.name} failed: ${err.message}`);
-    }
-  }
-  throw new Error(`All fetch attempts failed for ${url}`);
-}
+  // Local CORS-tolerant text fetcher used by refreshKev and other watcher helpers
+  async function fetchTextWithFallback(url) {
+    const attempts = [
+      { name: 'direct',     getUrl: () => url },
+      { name: 'corsproxy.io', getUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}` },
+      { name: 'allorigins', getUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
+      { name: 'jina',       getUrl: () => `https://r.jina.ai/${url.replace(/^https?:\/\//, '')}` }
+    ];
 
-  // Try each source in order
-  for (const url of urls) {
-    try {
-      console.log(`Attempting KEV load from: ${url}`);
-      const text = await fetchTextWithFallback(url);
-      console.log(`KEV fetch success (text length: ${text.length})`);
-
-      let json;
+    for (const attempt of attempts) {
       try {
-        json = JSON.parse(text);
-      } catch (parseErr) {
-        console.error(`JSON parse error from ${url}:`, parseErr);
-        continue;
+        const res = await fetch(attempt.getUrl(), {
+          mode: 'cors',
+          cache: 'no-store',
+          headers: { 'Accept': 'application/json,text/plain,*/*' }
+        });
+        if (res.ok) {
+          return await res.text();
+        } else {
+          console.warn(`${attempt.name} HTTP ${res.status}`);
+        }
+      } catch (err) {
+        console.warn(`${attempt.name} failed: ${err.message}`);
       }
-
-      let vulns = Array.isArray(json) ? json : (json.vulnerabilities || []);
-      if (!Array.isArray(vulns)) {
-        console.warn(`Unexpected KEV structure from ${url} — no vulnerabilities array`);
-        continue;
-      }
-
-      kevCache.data = vulns;
-      kevCache.loaded = true;
-      kevCache.ts = Date.now();
-
-      console.log(`KEV successfully loaded from ${url} (${vulns.length} entries)`);
-      return vulns;
-    } catch (err) {
-      console.warn(`KEV load failed for ${url}: ${err.message}`);
     }
+    throw new Error(`All fetch attempts failed for ${url}`);
   }
 
-  console.error('All KEV sources failed — KEV disabled');
-  kevCache.loaded = true;   // Prevent repeated attempts
-  kevCache.data = [];
-  return [];
-}
-  loadKEV();
-  if (shouldRefreshKev()) {
-    refreshKev();               // ← call it here, inside the scope
+  // ✅ Option B: Reuse the earlier-defined KEV loader (uses KEV_JSON_URLS and its own fallback)
+  await loadKEV();
+
+  function minutesSince(ts) {
+    if (!ts) return Infinity;
+    const then = new Date(ts).getTime();
+    if (Number.isNaN(then)) return Infinity;
+    return (Date.now() - then) / (60 * 1000);
   }
-  function minutesSince(ts){ if (!ts) return Infinity; const then = new Date(ts).getTime(); if (Number.isNaN(then)) return Infinity; return (Date.now() - then) / (60*1000); }
-  function shouldRefreshKev(){ const last = localStorage.getItem(KEV_FETCH_KEY); return minutesSince(last) >= KEV_REFRESH_MINUTES || !kevSet || kevSet.size === 0; }
-  async function refreshKev(){
+  function shouldRefreshKev() {
+    const last = localStorage.getItem(KEV_FETCH_KEY);
+    return minutesSince(last) >= KEV_REFRESH_MINUTES || !kevSet || kevSet.size === 0;
+  }
+
+  // Local KEV refresher: builds kevSet/kevMap used by the watcher for badges & info
+  async function refreshKev() {
     try {
       const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
       const text = await fetchTextWithFallback(kevUrl);
       const data = JSON.parse(text);
       const list = Array.isArray(data?.vulnerabilities) ? data.vulnerabilities : [];
-      const ids = []; const map = {};
-      for (const v of list){
-        const cve = String(v.cveID || v.cve_id || '').toUpperCase().replace(/[\u2010-\u2015\u2212]/g, '-');
+
+      const ids = [];
+      const map = {};
+
+      for (const v of list) {
+        const cve = String(v.cveID || v.cve_id || '')
+          .toUpperCase()
+          .replace(/[\u2010-\u2015\u2212]/g, '-'); // normalize various dash chars to '-'
         if (!cve) continue;
         ids.push(cve);
-        map[cve] = { vendor : String(v.vendorProject || '').trim(), product : String(v.product || '').trim(), dateAdded : (v.dateAdded || v.date_added || '').slice(0, 10) };
+        map[cve] = {
+          vendor: String(v.vendorProject || '').trim(),
+          product: String(v.product || '').trim(),
+          dateAdded: (v.dateAdded || v.date_added || '').slice(0, 10)
+        };
       }
-      kevSet = new Set(ids); kevMap = map;
+
+      kevSet = new Set(ids);
+      kevMap = map;
+
       localStorage.setItem(KEV_SET_KEY, JSON.stringify(ids));
       localStorage.setItem(KEV_MAP_KEY, JSON.stringify(map));
       localStorage.setItem(KEV_FETCH_KEY, new Date().toISOString());
-    } catch (e){ if (!kevSet) kevSet = new Set(); if (!kevMap) kevMap = {}; }
+    } catch (e) {
+      if (!kevSet) kevSet = new Set();
+      if (!kevMap) kevMap = {};
+      console.warn('refreshKev failed:', e.message);
+    }
   }
-  function isKev(cve){ return kevSet && kevSet.has(cve.toUpperCase()); }
-  function kevInfo(cve){ return kevMap && kevMap[cve.toUpperCase()] || null; }
-  const btn = document.createElement('button'); btn.id='watcherBtn'; btn.className='btn'; btn.textContent='CVE Watcher';
-  function ensureWatcherButton(){
+
+  function isKev(cve) { return kevSet && kevSet.has(String(cve).toUpperCase()); }
+  function kevInfo(cve) { return kevMap && kevMap[String(cve).toUpperCase()] || null; }
+
+  // Insert the watcher button in the header
+  function ensureWatcherButton() {
     let hdr = document.querySelector('header.cve-header');
-    if (!hdr){ btn.style.position = 'fixed'; btn.style.top = '60px'; btn.style.right = '12px'; btn.style.zIndex = '1500'; document.body.appendChild(btn); }
-    else { hdr.appendChild(btn); }
+    if (!hdr) {
+      btn.style.position = 'fixed';
+      btn.style.top = '60px';
+      btn.style.right = '12px';
+      btn.style.zIndex = '1500';
+      document.body.appendChild(btn);
+    } else {
+      hdr.appendChild(btn);
+    }
   }
-  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', ensureWatcherButton); } else { ensureWatcherButton(); }
-  const overlay = document.createElement('div'); overlay.id='watcher';
-  Object.assign(overlay.style, { display:'none', position:'fixed', top:'0', left:'0', width:'100%', height:'100%', background:'rgba(0,0,0,0.7)', alignItems:'center', justifyContent:'center', zIndex:'1300' });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureWatcherButton);
+  } else {
+    ensureWatcherButton();
+  }
+
+  // Overlay + controls
+  const overlay = document.createElement('div');
+  overlay.id = 'watcher';
+  Object.assign(overlay.style, {
+    display: 'none',
+    position: 'fixed',
+    top: '0', left: '0',
+    width: '100%', height: '100%',
+    background: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: '1300'
+  });
   overlay.innerHTML = `
     <div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="watcherTitle">
       <h2 id="watcherTitle">CVE Watcher</h2>
@@ -1694,217 +1737,316 @@ async function fetchTextWithFallback(url) {
       <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
     </div>`;
   document.body.appendChild(overlay);
-  const notif = document.createElement('div'); notif.id = 'watcherNotify'; document.body.appendChild(notif);
-  function kevBadge(kev){ if (!kev) return ''; return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`; }
-  function showNotification(items){
+
+  // Notification bubble
+  const notif = document.createElement('div');
+  notif.id = 'watcherNotify';
+  document.body.appendChild(notif);
+
+  function kevBadge(kev) {
+    if (!kev) return '';
+    return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`;
+  }
+
+  function showNotification(items) {
     const dark = document.body.classList.contains('dark');
     notif.innerHTML = items.map(i => {
       const kinfo = i.kev ? kevInfo(i.cve) : null;
-      const vendorProductCve = kinfo ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ') : i.cve;
+      const vendorProductCve = kinfo
+        ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ')
+        : i.cve;
       const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
       return `<div style="background:${dark?'#1e1e1e':'#fff'};color:inherit;border:1px solid ${dark?'var(--border-dark)':'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
     }).join('');
-    notif.style.display='block';
-    setTimeout(()=>{ notif.style.display='none'; }, 15000);
+    notif.style.display = 'block';
+    setTimeout(() => { notif.style.display = 'none'; }, 15000);
   }
-  function parseList(raw){ return (raw||'').toUpperCase().split(/[\s,;]+/).map(s=>s.trim()).filter(s=>/^CVE-\d{4}-\d{4,}$/.test(s)); }
-  function getSources(){
+
+  function parseList(raw) {
+    return (raw || '')
+      .toUpperCase()
+      .split(/[\s,;]+/)
+      .map(s => s.trim())
+      .filter(s => /^CVE-\d{4}-\d{4,}$/.test(s));
+  }
+
+  function getSources() {
     return [
-      { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
-      { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
-      { name:"SANS Internet Storm Center", url:"https://isc.sans.edu/rssfeed_full.xml" },
-      { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
-      { name:"Dark Reading", url:"https://www.darkreading.com/rss.xml" },
-      { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
-      { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
-      { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
-      { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
-      { name:"Zero Day Initiative", url:"https://www.zerodayinitiative.com/rss/published/" },
-      { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
-      { name:"Unit42 (Palo Alto)", url:"https://unit42.paloaltonetworks.com/feed/" },
-      { name:"Security Boulevard", url:"https://securityboulevard.com/feed" },
-      { name:"X (Twitter) — Live Search", url:"https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type:"x" }
+      { name: "SecurityWeek", url: "https://www.securityweek.com/feed/" },
+      { name: "BleepingComputer", url: "https://www.bleepingcomputer.com/feed/" },
+      { name: "SANS Internet Storm Center", url: "https://isc.sans.edu/rssfeed_full.xml" },
+      { name: "MSRC Security Update Guide", url: "https://api.msrc.microsoft.com/update-guide/rss" },
+      { name: "Dark Reading", url: "https://www.darkreading.com/rss.xml" },
+      { name: "Krebs on Security", url: "https://krebsonsecurity.com/feed/" },
+      { name: "Help Net Security", url: "https://www.helpnetsecurity.com/feed/" },
+      { name: "Securelist (Kaspersky)", url: "https://securelist.com/feed/" },
+      { name: "WeLiveSecurity (ESET)", url: "https://www.welivesecurity.com/feed/" },
+      { name: "Zero Day Initiative", url: "https://www.zerodayinitiative.com/rss/published/" },
+      { name: "Exploit Database", url: "https://www.exploit-db.com/rss.xml" },
+      { name: "Unit42 (Palo Alto)", url: "https://unit42.paloaltonetworks.com/feed/" },
+      { name: "Security Boulevard", url: "https://securityboulevard.com/feed" },
+      { name: "X (Twitter) — Live Search", url: "https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type: "x" }
     ];
   }
-  // Helper to fetch and parse CyCognito page (using your existing fetchTextWithFallback)
-async function fetchCyCognitoThreats() {
-  const url = 'https://www.cycognito.com/emerging-threats/';
-  try {
-    const html = await fetchTextWithFallback(url);
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    // The page uses headings for CVEs — look for patterns like <hX>CVE-...</hX>
-    // Adjust selectors based on actual structure (inspect the page)
-    const threatSections = doc.querySelectorAll('h2, h3, h4'); // or more specific: '.threat-entry h2' if classed
-    const threats = [];
-    
-    threatSections.forEach(h => {
-      const text = h.textContent.trim();
-      const cveMatch = text.match(/CVE-\d{4}-\d{4,}/i);
-      if (!cveMatch) return;
-      
-      const cve = cveMatch[0].toUpperCase();
-      // Find sibling/next elements for published date (look for text like "Published: 01/08/2026")
-      let published = 'Unknown';
-      let next = h.nextElementSibling;
-      while (next) {
-        const dateMatch = next.textContent.match(/Published:\s*(\d{2}\/\d{2}\/\d{4})/i);
-        if (dateMatch) {
-          published = dateMatch[1];
-          break;
+
+  // CyCognito emerging threats (best-effort)
+  async function fetchCyCognitoThreats() {
+    const url = 'https://www.cycognito.com/emerging-threats/';
+    try {
+      const html = await fetchTextWithFallback(url);
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+
+      const threatSections = doc.querySelectorAll('h2, h3, h4');
+      const threats = [];
+
+      threatSections.forEach(h => {
+        const text = h.textContent.trim();
+        const cveMatch = text.match(/CVE-\d{4}-\d{4,}/i);
+        if (!cveMatch) return;
+
+        const cve = cveMatch[0].toUpperCase();
+
+        let published = 'Unknown';
+        let next = h.nextElementSibling;
+        while (next) {
+          const dateMatch = next.textContent.match(/Published:\s*(\d{2}\/\d{2}\/\d{4})/i);
+          if (dateMatch) {
+            published = dateMatch[1];
+            break;
+          }
+          next = next.nextElementSibling;
         }
-        next = next.nextElementSibling;
-      }
-      
-      threats.push({ cve, published, title: text, link: url + '#' + cve.toLowerCase().replace(/-/g,'') }); // fake anchor or just url
-    });
-    
-    return threats;
-  } catch (e) {
-    console.warn('CyCognito fetch failed:', e);
-    return [];
+
+        threats.push({
+          cve,
+          published,
+          title: text,
+          link: url + '#' + cve.toLowerCase().replace(/-/g, '')
+        });
+      });
+
+      return threats;
+    } catch (e) {
+      console.warn('CyCognito fetch failed:', e);
+      return [];
+    }
   }
-}
-  const CYC_STATE_KEY = 'cveWatcher.cyCognitoState'; // { lastThreats: [{cve, published}], lastCheck: timestamp }
+
+  const CYC_STATE_KEY = 'cveWatcher.cyCognitoState';
   function norm(text) { return (text || '').replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-').toUpperCase(); }
-  function buildCveRegex(cve) { const m = cve.match(/^CVE-(\d{4})-(\d{4,})$/i); if (!m) return null; const year = m[1], id = m[2]; return new RegExp(`CVE[\\s\\-]+${year}[\\s\\-]+${id}`, 'i'); }
-  async function pageMentionsCve(url, cveUpper){ try { const html = await fetchTextWithFallback(url); const text = norm(new DOMParser().parseFromString(html, 'text/html').documentElement.textContent); const regex = buildCveRegex(cveUpper); return regex ? regex.test(text) : text.includes(norm(cveUpper)); } catch { return false; } }
-  async function fetchMentionsForCve(cve){
-    const sources = getSources(); const hits = [];
+  function buildCveRegex(cve) {
+    const m = String(cve).match(/^CVE-(\d{4})-(\d{4,})$/i);
+    if (!m) return null;
+    const year = m[1], id = m[2];
+    return new RegExp(`CVE[\\s\\-]+${year}[\\s\\-]+${id}`, 'i');
+  }
+
+  async function pageMentionsCve(url, cveUpper) {
+    try {
+      const html = await fetchTextWithFallback(url);
+      const text = norm(new DOMParser().parseFromString(html, 'text/html').documentElement.textContent);
+      const regex = buildCveRegex(cveUpper);
+      return regex ? regex.test(text) : text.includes(norm(cveUpper));
+    } catch {
+      return false;
+    }
+  }
+
+  async function fetchMentionsForCve(cve) {
+    const sources = getSources();
+    const hits = [];
+
     await Promise.all(sources.map(async s => {
       if (s.type === 'x') {
         const xLink = s.url.replace('{{CVE}}', encodeURIComponent(cve));
-        const key = `XSEARCH|${cve}`; if (!notified.has(key)) { notified.add(key); hits.push({ cve, title: `X Live Search for ${cve}`, link: xLink, source: s.name, kev: isKev(cve) }); }
+        const key = `XSEARCH|${cve}`;
+        if (!notified.has(key)) {
+          notified.add(key);
+          hits.push({ cve, title: `X Live Search for ${cve}`, link: xLink, source: s.name, kev: isKev(cve) });
+        }
         return;
       }
+
       try {
         const xml = await fetchTextWithFallback(s.url);
         const doc = new DOMParser().parseFromString(xml, 'application/xml');
         const items = Array.from(doc.querySelectorAll('item, entry')).slice(0, 60);
         const cveUpper = cve.toUpperCase();
+
         let pageScanBudget = PAGE_SCAN_CAP;
+
         const itemMentionsCve = (item, cveUpper) => {
           const pick = sel => item.querySelector(sel)?.textContent || '';
-          const title = pick('title'); const desc = pick('description') || pick('summary');
+          const title = pick('title');
+          const desc = pick('description') || pick('summary');
           const contentNSq = item.querySelector('content\\:encoded')?.textContent || '';
           const contentNSt = item.getElementsByTagName('content:encoded')?.[0]?.textContent || '';
-          const contentNS = contentNSq || contentNSt; const content = contentNS || pick('content');
+          const contentNS = contentNSq || contentNSt;
+          const content = contentNS || pick('content');
           const blob = norm(`${title} ${desc} ${content}`);
           const regex = buildCveRegex(cveUpper);
           const matched = regex ? regex.test(blob) : blob.includes(norm(cveUpper));
           return { matched, hasContentEncoded: !!contentNS };
         };
-        for (const it of items){
+
+        for (const it of items) {
           const title = it.querySelector('title')?.textContent || '';
           const linkNode = it.querySelector('link[href]');
           const rawLink = it.querySelector('link')?.textContent || linkNode?.getAttribute('href') || '#';
           const link = (rawLink || '#').trim();
+
           const { matched, hasContentEncoded } = itemMentionsCve(it, cveUpper);
           let finalMatch = matched;
+
           if (!finalMatch && link && link !== '#' && pageScanBudget > 0 && !hasContentEncoded) {
             finalMatch = await pageMentionsCve(link, cveUpper);
             pageScanBudget--;
           }
-          if (finalMatch){
-            const key = `${cve}|${link}`; if (!notified.has(key)) { notified.add(key); hits.push({ cve, title: title || link, link, source: s.name, kev: isKev(cve) }); }
+
+          if (finalMatch) {
+            const key = `${cve}|${link}`;
+            if (!notified.has(key)) {
+              notified.add(key);
+              hits.push({ cve, title: title || link, link, source: s.name, kev: isKev(cve) });
+            }
           }
         }
       } catch {}
     }));
+
     return hits;
   }
-async function poll() {
-  if (shouldRefreshKev()) { await refreshKev(); }
 
-  const list = parseList(localStorage.getItem(STORAGE_KEY));
-  // No watched CVEs? → exit early (but we can still check CyCognito independently if desired)
-  // const allHits = [];   ← keep this if you want to collect everything together
+  async function checkCyCognito() {
+    const threats = await fetchCyCognitoThreats();
+    if (!threats.length) return [];
 
-  const allHits = [];
+    let state = JSON.parse(localStorage.getItem(CYC_STATE_KEY) || '{}');
+    const lastThreats = state.lastThreats || [];
+    const lastCVEs = new Set(lastThreats.map(t => t.cve));
 
-  // Your existing CVE watcher logic
-  for (const cve of list) {
-    const hits = await fetchMentionsForCve(cve);
-    allHits.push(...hits);
+    const newHits = threats.filter(t => !lastCVEs.has(t.cve));
+
+    state.lastThreats = threats.map(t => ({ cve: t.cve, published: t.published }));
+    state.lastCheck = Date.now();
+    localStorage.setItem(CYC_STATE_KEY, JSON.stringify(state));
+
+    return newHits.map(hit => ({
+      cve: hit.cve,
+      title: `CyCognito Emerging Threat: ${hit.title}`,
+      link: hit.link || 'https://www.cycognito.com/emerging-threats/',
+      source: 'CyCognito Emerging Threats',
+      kev: isKev(hit.cve)
+    }));
   }
 
-  // ────────────────────────────────────────────────
-  // ADD THIS BLOCK HERE: Check CyCognito Emerging Threats
-  // It runs every poll interval, regardless of your CVE list
-  // (You could add a toggle later if you want to optionalize it)
-  const cyHits = await checkCyCognito();
-  allHits.push(...cyHits);
-  // ────────────────────────────────────────────────
+  // Initial KEV refresh (local set/map) if needed
+  if (shouldRefreshKev()) {
+    await refreshKev();
+  }
 
-  if (allHits.length) {
-    persistNotified();
+  let timer = null;
 
-    const wc = document.getElementById('watchContent');
-    if (wc) {
-      const html = allHits.map(r => {
-        const titleText = `${r.cve ? r.cve + ': ' : ''}${r.title || r.link}`;
-        const kinfo = r.kev ? kevInfo(r.cve) : null;
-        const vendorProdCve = kinfo 
-          ? [kinfo.vendor, kinfo.product, r.cve].filter(Boolean).join(' · ') 
-          : (r.cve || 'CyCognito Update');
-        const metaLine = `${vendorProdCve}${r.source ? ' · ' + r.source : ''} · ${new Date().toLocaleString()}`;
-        return `<div class="item"><div class="title">${linkRow(r.link, titleText)}${kevBadge(r.kev)}</div><div class="meta">${metaLine}</div></div>`;
-      }).join('');
-
-      wc.insertAdjacentHTML('afterbegin', html);
+  async function poll() {
+    if (shouldRefreshKev()) {
+      await refreshKev();
     }
 
-    showNotification(allHits.slice(0, 3));
+    const list = parseList(localStorage.getItem(STORAGE_KEY));
+    const allHits = [];
+
+    for (const cve of list) {
+      const hits = await fetchMentionsForCve(cve);
+      allHits.push(...hits);
+    }
+
+    const cyHits = await checkCyCognito();
+    allHits.push(...cyHits);
+
+    if (allHits.length) {
+      persistNotified();
+
+      const wc = document.getElementById('watchContent');
+      if (wc) {
+        const html = allHits.map(r => {
+          const titleText = `${r.cve ? r.cve + ': ' : ''}${r.title || r.link}`;
+          const kinfo = r.kev ? kevInfo(r.cve) : null;
+          const vendorProdCve = kinfo
+            ? [kinfo.vendor, kinfo.product, r.cve].filter(Boolean).join(' · ')
+            : (r.cve || 'CyCognito Update');
+          const metaLine = `${vendorProdCve}${r.source ? ' · ' + r.source : ''} · ${new Date().toLocaleString()}`;
+          return `<div class="item"><div class="title">${linkRow(r.link, titleText)}${kevBadge(r.kev)}</div><div class="meta">${metaLine}</div></div>`;
+        }).join('');
+
+        wc.insertAdjacentHTML('afterbegin', html);
+      }
+
+      showNotification(allHits.slice(0, 3));
+    }
   }
-}
-  async function checkCyCognito() {
-  const threats = await fetchCyCognitoThreats();
-  if (!threats.length) return [];
-  
-  let state = JSON.parse(localStorage.getItem(CYC_STATE_KEY) || '{}');
-  const lastThreats = state.lastThreats || [];
-  const lastCVEs = new Set(lastThreats.map(t => t.cve));
-  
-  const newHits = threats.filter(t => !lastCVEs.has(t.cve));
-  
-  // Update state
-  state.lastThreats = threats.map(t => ({cve: t.cve, published: t.published}));
-  state.lastCheck = Date.now();
-  localStorage.setItem(CYC_STATE_KEY, JSON.stringify(state));
-  
-  return newHits.map(hit => ({
-    cve: hit.cve,
-    title: `CyCognito Emerging Threat: ${hit.title}`,
-    link: hit.link || 'https://www.cycognito.com/emerging-threats/',
-    source: 'CyCognito Emerging Threats',
-    kev: isKev(hit.cve) // reuse your KEV check
-  }));
-}
-  let timer = null;
-  function start(){ const minutes = Math.max(5, Number(localStorage.getItem(INTERVAL_KEY) || 30)); if (timer) clearInterval(timer); timer = setInterval(poll, minutes*60*1000); poll(); }
-  function stop(){ if (timer) { clearInterval(timer); timer=null; } }
-  btn.addEventListener('click', ()=>{
+
+  function start() {
+    const minutes = Math.max(5, Number(localStorage.getItem(INTERVAL_KEY) || 30));
+    if (timer) clearInterval(timer);
+    timer = setInterval(poll, minutes * 60 * 1000);
+    poll();
+  }
+
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+  }
+
+  // UI wiring
+  btn.addEventListener('click', () => {
     document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
     document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
-    overlay.style.display='flex';
+    overlay.style.display = 'flex';
   });
-  overlay.addEventListener('click', (e)=>{ if (e.target.id === 'watcher') overlay.style.display='none'; });
-  overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display='none');
-  overlay.querySelector('#watcherSave').addEventListener('click', ()=>{
+
+  overlay.addEventListener('click', (e) => { if (e.target.id === 'watcher') overlay.style.display = 'none'; });
+  overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display = 'none');
+
+  overlay.querySelector('#watcherSave').addEventListener('click', () => {
     const list = parseList(document.getElementById('watcherList').value);
     localStorage.setItem(STORAGE_KEY, list.join('\n'));
-    const interval = Math.max(5, Number(document.getElementById('watcherInterval').value)||30);
+
+    const interval = Math.max(5, Number(document.getElementById('watcherInterval').value) || 30);
     localStorage.setItem(INTERVAL_KEY, String(interval));
-    overlay.style.display='none';
-    if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length!==1?'s':''}; ${interval} min)`);
+
+    overlay.style.display = 'none';
+    if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length !== 1 ? 's' : ''}; ${interval} min)`);
     start();
   });
-  overlay.querySelector('#watcherStop').addEventListener('click', ()=>{ stop(); overlay.style.display='none'; if (typeof toast === 'function') toast('CVE Watcher stopped'); });
-  overlay.querySelector('#watcherCheck').addEventListener('click', async ()=>{ if (typeof toast === 'function') toast('Checking now…'); await poll(); if (typeof toast === 'function') toast('Check complete'); });
-  overlay.querySelector('#watcherReset').addEventListener('click', ()=>{ notified.clear(); localStorage.removeItem(NOTIFIED_KEY); if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check'); });
-  overlay.querySelector('#watcherKev').addEventListener('click', async ()=>{ if (typeof toast === 'function') toast('Refreshing KEV…'); await refreshKev(); if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`); });
-  if (parseList(localStorage.getItem(STORAGE_KEY)).length){ start(); }
+
+  overlay.querySelector('#watcherStop').addEventListener('click', () => {
+    stop();
+    overlay.style.display = 'none';
+    if (typeof toast === 'function') toast('CVE Watcher stopped');
+  });
+
+  overlay.querySelector('#watcherCheck').addEventListener('click', async () => {
+    if (typeof toast === 'function') toast('Checking now…');
+    await poll();
+    if (typeof toast === 'function') toast('Check complete');
+  });
+
+  overlay.querySelector('#watcherReset').addEventListener('click', () => {
+    notified.clear();
+    localStorage.removeItem(NOTIFIED_KEY);
+    if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check');
+  });
+
+  overlay.querySelector('#watcherKev').addEventListener('click', async () => {
+    if (typeof toast === 'function') toast('Refreshing KEV…');
+    await refreshKev();
+    if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`);
+  });
+
+  // Start automatically if there’s a saved list
+  if (parseList(localStorage.getItem(STORAGE_KEY)).length) {
+    start();
+  }
 })();
 /* ---------- Tabs ---------- */
 function switchTab(tabIndex) {
