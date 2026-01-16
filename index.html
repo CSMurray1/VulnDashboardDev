@@ -472,13 +472,25 @@ body.dark .feed ul li a { color: #5caeff; }
 /* Watcher notify panel */
 #watcherNotify {
   position: fixed;
-  bottom: 24px;
-  right: 24px;
-  max-width: 125px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   z-index: 1400;
   display: none;
+  max-width: 500px; /* Wider for content */
+  width: 90%; /* Responsive */
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  background: var(--panel-light);
+  color: var(--text-light);
+  border: 1px solid var(--border-light);
 }
-/* Dark mode fix for Watcher textarea placeholder */
+body.dark #watcherNotify {
+  background: var(--panel-dark);
+  color: var(--text-dark);
+  border: 1px solid var(--border-dark);
+}
 body.dark #watcherList::placeholder { color: #bbb; }
 /* Force dark mode for AI Analysis modal outer container */
 body.dark #analysisModal > div {
@@ -1544,7 +1556,7 @@ function renderRelevantSearches(term){
     linkRow(`https://x.com/search?q=${q}&f=live`, "X (Twitter) Latest"),
     linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer"),
     linkRow(`https://thehackernews.com/search?q=${q}`, "The Hacker News")
-  ].join("");
+  ].join("<br>");
   document.getElementById("searchLinks").innerHTML = `<div class="item"><div class="title">Relevant Searches</div><div class="meta">${links}</div></div>`;
 }
 function renderRansomwareSearches(cveId){
@@ -1827,7 +1839,7 @@ function queueWatcherSound(count) {
 
 function showNotification(items) {
   const dark = document.body.classList.contains('dark');
-  notif.innerHTML = items.map(i => {
+  let html = items.map(i => {
     const kinfo = i.kev ? kevInfo(i.cve) : null;
     const vendorProductCve = kinfo
       ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ')
@@ -1835,14 +1847,15 @@ function showNotification(items) {
     const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
     return `<div style="background:${dark?'#1e1e1e':'#fff'};color:inherit;border:1px solid ${dark?'var(--border-dark)':'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
   }).join('');
-
-  // show bubble
+  
+  // Optional: Add a close button at the bottom (comment out if you don't want it)
+  html += `<div style="text-align: center; margin-top: 16px;"><button class="btn" onclick="document.getElementById('watcherNotify').style.display='none'">Close</button></div>`;
+  
+  notif.innerHTML = html;
   notif.style.display = 'block';
-
   // 🔊 play a single beep for this batch of items
   queueWatcherSound(items.length);
-
-  // auto-hide after a moment
+  // Auto-hide after 15 seconds (adjust timeout as needed)
   setTimeout(() => { notif.style.display = 'none'; }, 15000);
 }
 
