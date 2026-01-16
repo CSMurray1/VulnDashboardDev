@@ -637,6 +637,10 @@ function linkRow(url, label) {
   return `<a href="${url}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>`;
 }
 
+// Helper to build the CISA KEV catalog URL for a CVE
+function cisaKevUrl(cve) {
+  return `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?field_cve=${encodeURIComponent(cve)}`;
+  
 // Initialize the sound toggle state
 const soundToggle = document.getElementById('watcherSoundToggle');
 if (soundToggle) {
@@ -703,7 +707,9 @@ function buildAnalysisPrompt(ctx) {
   const cweLines = cwes.length ? cwes.map(c => `- ${c.id || 'Unknown'} — ${c.desc || 'No description'} (Assigner: ${c.assigner || 'Unknown'})`).join('\n') : '- CWE: (none)';
   const refLines = referencesGrouped.length ? referencesGrouped.map(g => { const links = (g.links || []).slice(0, 4).map(r => ` • ${r.name || r.url}: ${r.url}`).join('\n'); return `- ${g.host}\n${links}`; }).join('\n') : '- References: (none)';
   const epssLine = (epss && typeof epss.score === 'number') ? `EPSS: ${epss.score.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day), Percentile: ${(epss.percentile * 100).toFixed(1)}%` : `EPSS: (no data)`;
-  const kevLine = kevYes ? `CISA KEV: Yes (Ransomware: ${String(ransomwareTag || 'Unknown')})` : `CISA KEV: No`;
+  const kevLine = kevYes
+  ? `[CcisaKevUrl(input}) (Ransomware: ${String(ransomwareTag || 'Unknown')})`
+  : `CISA KEV: No`;
   return [
     `Provide a concise, technically rigorous analysis for ${isCVE ? 'CVE' : 'product'}: ${input}.`,
     ``,
@@ -740,7 +746,9 @@ function generateStaticAnalysis(ctx) {
   const cvssText = cvss.length ? cvss.map(m => `- **CVSS v${m.version}**: ${m.score} _(source: ${m.source}; vector: ${m.vector || 'N/A'})_`).join('\n') : '- **CVSS**: No metrics available';
   const cweText = cwes.length ? cwes.map(c => `- **${c.id || 'Unknown'}** — ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n') : '- **CWE**: No data';
   const epssText = epss ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) — Percentile ${(epss.percentile * 100).toFixed(1)}%` : '- **EPSS**: No data';
-  const kevText = kevYes ? `- **CISA KEV**: Yes${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}` : '- **CISA KEV**: No';
+  const kevText = kevYes
+  ? `- **CISA KEV**: [Yes](${cisaKevUrl(input)})${String(ransomwareTag).toLowerCase() === 'known' ?wn ransomware campaign use)' : ''}`
+  : `- **CISA KEV**: No`;
   return [
     `# ${isCVE ? input : `Analysis: ${input}`}`,
     ``,
@@ -1235,6 +1243,7 @@ async function runVendorProductSearch(keyword) {
       `;
       document.getElementById("cveContent").innerHTML = fallbackHtml;
       renderRelevantSearches(trimmedKeyword);
+      + await renderRelevantSearches(trimmedKeyword);
       toast("Single-word search — showing NVD web link instead");
       console.log("Broad single-word fallback:", nvdWebUrl);
     } else {
@@ -1269,6 +1278,7 @@ async function runVendorProductSearch(keyword) {
         toast(`Only ${data.totalResults} results — web link added for more`);
       }
       renderRelevantSearches(trimmedKeyword);
+      + await renderRelevantSearches(trimmedKeyword);
     }
   } catch (err) {
     console.error("Search failed:", err);
@@ -1276,6 +1286,7 @@ async function runVendorProductSearch(keyword) {
       <div class="meta">Error: ${err.message || 'NVD service issue'}. Try a different term.</div>
     `;
     renderRelevantSearches(trimmedKeyword);
+    + await renderRelevantSearches(trimmedKeyword);
   } finally {
     if (loadingEl) loadingEl.style.display = "none";
   }
@@ -1415,10 +1426,12 @@ const quickLinksHtml = [
   linkRow(`https://nvd.nist.gov/vuln/detail/${input}`, "NVD Detail Page"),
   linkRow(`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${input}`, "MITRE CVE Record"),
   linkRow(`https://cveawg.mitre.org/api/cve/${input}`, "CVE Services JSON"),
+  kevYes ? linkRow(cisaKevUrl(input), "CISA KEV Catalog (this CVE)") : '',
   linkRow(`https://web.archive.org/`, "Archive.org (Wayback Machine)")
 ].join("<br>");
     // Always show relevant searches
     renderRelevantSearches(input);
+    + await renderRelevantSearches(input);
     if (String(ransomwareTag).toLowerCase()==='known') renderRansomwareSearches(input);
     const cweHtml = buildCweHtml(cveData, nvdJson);
     // Context for AI Analysis
@@ -1448,12 +1461,12 @@ const quickLinksHtml = [
       <div class="item"><div class="title">Published: ${published}</div></div>
       <div class="item"><div class="title">Description</div><div class="meta">${desc}</div></div>
       <div class="item">
-        <div class="title">Exploitation Signals</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-          <div class="badge ${kevYes ? 'yes' : 'no'}">CISA KEV: ${kevYes ? 'Yes' : 'No'}</div>
-          ${kevYes ? `<div class="badge ${String(ransomwareTag).toLowerCase()==='known' ? 'yes' : 'no'}">Ransomware: ${ransomwareTag}</div>` : `<div class="badge no">Ransomware: Unknown</div>`}
-          ${inVulncheck ? '<div class="badge yes">VulnCheck Recent</div>' : ''}
-        </div>
+      <div class="title">Exploitation Signals</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <div class="badge ${kevYes ? 'yes' : 'no'}">CISA KEV: ${kevYes ? 'Yes' : 'No'}</div>
+        ${kevYes ? `<div class="badge ${String(ransomwareTag).toLowerCase()==='known' ? 'yes' : 'no'}">Ransomware: ${ransomwareTag}</div>` : `<div class="badge no">Ransomware: Unknown</div>`}
+        ${inVulncheck ? '<div class="badge yes">VulnCheck Recent</div>' : ''}
+      </div>
         <div class="metrics-row">
           <div class="metrics-col">${epssInlineHtml}</div>
           <div class="metrics-col">${ssvcInlineHtml}</div>
@@ -1639,18 +1652,100 @@ async function loadExploitationWatch() {
 function renderPrevalenceSignals(keyword){ document.getElementById("prevBody").innerHTML = `<div class="meta">Prevalence view not enabled in this build.</div>`; }
 function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence – ${keyword}`; renderPrevalenceSignals(keyword); }
 /* ---------- Relevant Searches ---------- */
-function renderRelevantSearches(term){
-  const q = encodeURIComponent(term); const isCve = /^CVE-\d{4}-\d{4,}$/i.test(term);
-  const links = [
-    linkRow(`https://www.exploit-db.com/search?q=${q}`, "Exploit-DB Search"),
-    linkRow(`https://packetstorm.news/files/cve/?q=${q}`, "PacketStorm Search"),
-    linkRow(`https://github.com/search?q=${q}&type=code`, "GitHub Code Search (PoCs)"),
-    isCve ? linkRow(`https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`, "CrowdSec CTI Explorer") : '',
-    linkRow(`https://x.com/search?q=${q}&f=live`, "X (Twitter) Latest"),
-    linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer"),
-    linkRow(`https://thehackernews.com/search?q=${q}`, "The Hacker News")
-  ].join("<br>");
-  document.getElementById("searchLinks").innerHTML = `<div class="item"><div class="title">Relevant Searches</div><div class="meta">${links}</div></div>`;
+async function renderRelevantSearches(term) {
+  const container = document.getElementById("searchLinks");
+  if (!container) return;
+
+  const q = encodeURIComponent(term);
+  const isCve = /^CVE-\d{4}-\d{4,}$/i.test(term);
+
+  // Progress message while we probe sources
+  container.innerHTML = '<div class="meta">Checking relevant sources…</div>';
+
+  // Per-site detectors: return true when page looks like it has results
+  const SOURCES = [
+    {
+      label: "Exploit-DB Search",
+      url: `https://www.exploit-db.com/search?q=${q}`,
+      test: (html) =>
+        /\/exploits\/\d+/.test(html) && !/No results|did not match any results/i.test(html)
+    },
+    {
+      label: "PacketStorm Search",
+      url: `https://packetstorm.news/files/cve/?q=${q}`,
+      test: (html) =>
+        /\/files\/\d+\//.test(html) && !/No files matched/i.test(html)
+    },
+    {
+      label: "GitHub Code Search (PoCs)",
+      url: `https://github.com/search?q=${q}&type=code`,
+      // GitHub HTML varies; detect known signals and avoid the "no code found" message
+      test: (html) =>
+        /data-total-count="(\d+)"/i.test(html) ||
+        (!/We couldn’t find any code/i.test(html) && /aria-label="Code"/i.test(html))
+    },
+    // CrowdSec CTI page only makes sense for a CVE ID
+    ...(isCve ? [{
+      label: "CrowdSec CTI Explorer",
+      url: `https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`,
+      test: (html) => /CVE-\d{4}-\d{4,}/i.test(html)
+    }] : []),
+    // X/Twitter search requires an authenticated session and cannot be reliably fetched cross-origin.
+    // We’ll add it *only if* at least one other source matched, as a convenience link.
+    {
+      label: "X (Twitter) Latest",
+      url: `https://x.com/search?q=${q}&f=live`,
+      skipFetch: true
+    },
+    {
+      label: "BleepingComputer",
+      url: `https://www.bleepingcomputer.com/search/?q=${q}`,
+      test: (html) =>
+        /class=["']?search-result/i.test(html) && !/No results/i.test(html)
+    },
+    {
+      label: "The Hacker News",
+      url: `https://thehackernews.com/search?q=${q}`,
+      test: (html) =>
+        /<article|class=["']post-title/i.test(html)
+    }
+  ];
+
+  // Defensive timeout so a single slow site doesn’t stall the panel
+  const timeout = (ms, p) =>
+    Promise.race([p, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+
+  async function probeSource(src) {
+    if (src.skipFetch) return { src, ok: false }; // don't use as signal
+    try {
+      const html = await timeout(6000, fetchTextWithBetterFallback(src.url));
+      const ok = !!html && typeof src.test === "function" && src.test(html);
+      return { src, ok };
+    } catch {
+      return { src, ok: false };
+    }
+  }
+
+  // Run probes in parallel
+  const probes = await Promise.all(SOURCES.map(probeSource));
+  const matched = probes.filter((p) => p.ok);
+
+  if (!matched.length) {
+    // Your requirement: show nothing unless we have info to return
+    container.innerHTML = `<div class="meta">No matching hits were found on common sources for “${term}”.</div>`;
+    return;
+  }
+
+  // Render only matched sources; add X (Twitter) link as a convenience if we had any hits
+  const rows = matched.map(({ src }) => linkRow(src.url, src.label));
+  const twitter = SOURCES.find((s) => s.skipFetch);
+  if (twitter) rows.push(linkRow(twitter.url, twitter.label));
+
+  container.innerHTML = `
+    <div class="item">
+      <div class="title">Relevant Searches</div>
+      <div class="meta">${rows.join("<br>")}</div>
+    </div>`;
 }
 function renderRansomwareSearches(cveId){
   const q = encodeURIComponent(cveId + " ransomware");
