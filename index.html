@@ -1660,7 +1660,6 @@ async function loadExploitationWatch() {
 function renderPrevalenceSignals(keyword){ document.getElementById("prevBody").innerHTML = `<div class="meta">Prevalence view not enabled in this build.</div>`; }
 function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence – ${keyword}`; renderPrevalenceSignals(keyword); }
 /* ---------- Relevant Searches ---------- */
-async function renderRelevantSearches(term) {
 
 async function renderRelevantSearches(term) {
   const container = document.getElementById("searchLinks");
@@ -1669,35 +1668,62 @@ async function renderRelevantSearches(term) {
   const q = encodeURIComponent(term);
   const isCve = /^CVE-\d{4}-\d{4,}$/i.test(term);
 
+  // Progress message while we probe sources
   container.innerHTML = '<div class="meta">Checking relevant sources…</div>';
 
+  // Per-site detectors: return true when page looks like it has results
   const SOURCES = [
-    { label: "Exploit-DB Search", url: `https://www.exploit-db.com/search?q=${q}`,
-      test: (html) => /\/exploits\/\d+/.test(html) && !/No results|did not match any results/i.test(html) },
-    { label: "PacketStorm Search", url: `https://packetstorm.news/files/cve/?q=${q}`,
-      test: (html) => /\/files\/\d+\//.test(html) && !/No files matched/i.test(html) },
-    { label: "GitHub Code Search (PoCs)", url: `https://github.com/search?q=${q}&type=code`,
-      test: (html) => /data-total-count="(\d+)"/i.test(html)
-        || (!/We couldn’t find any code/i.test(html) && /aria-label="Code"/i.test(html)) },
-    ...(isCve ? [{ label: "CrowdSec CTI Explorer",
-                   url: `https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`,
-                   test: (html) => /CVE-\d{4}-\d{4,}/i.test(html) }] : []),
+    {
+      label: "Exploit-DB Search",
+      url: `https://www.exploit-db.com/search?q=${q}`,
+      test: (html) =>
+        /\/exploits\/\d+/.test(html) && !/No results|did not match any results/i.test(html)
+    },
+    {
+      label: "PacketStorm Search",
+      url: `https://packetstorm.news/files/cve/?q=${q}`,
+      test: (html) =>
+        /\/files\/\d+\//.test(html) && !/No files matched/i.test(html)
+    },
+    {
+      label: "GitHub Code Search (PoCs)",
+      url: `https://github.com/search?q=${q}&type=code`,
+      test: (html) =>
+        /data-total-count="(\d+)"/i.test(html) ||
+        (!/We couldn’t find any code/i.test(html) && /aria-label="Code"/i.test(html))
+    },
+    ...(isCve
+      ? [{
+          label: "CrowdSec CTI Explorer",
+          url: `https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`,
+          test: (html) => /CVE-\d{4}-\d{4,}/i.test(html)
+        }]
+      : []),
+    // X/Twitter search requires login; include as convenience link only
     { label: "X (Twitter) Latest", url: `https://x.com/search?q=${q}&f=live`, skipFetch: true },
-    { label: "BleepingComputer", url: `https://www.bleepingcomputer.com/search/?q=${q}`,
-      test: (html) => /class=["']?search-result/i.test(html) && !/No results/i.test(html) },
-    { label: "The Hacker News", url: `https://thehackernews.com/search?q=${q}`,
-      test: (html) => /<article|class=["']post-title/i.test(html) }
+    {
+      label: "BleepingComputer",
+      url: `https://www.bleepingcomputer.com/search/?q=${q}`,
+      test: (html) => /class=["']?search-result/i.test(html) && !/No results/i.test(html)
+    },
+    {
+      label: "The Hacker News",
+      url: `https://thehackernews.com/search?q=${q}`,
+      test: (html) => /<article|class=["']post-title/i.test(html)
+    }
   ];
 
-// Defensive timeout so a single slow site doesn’t stall the panel
-const timeout = (ms, promise) =>
-  Promise.race([
-    promise,
-    new Promise((resolve) => setTimeout(() => resolve(null), ms))
+  // Defensive timeout so a single slow site doesn’t stall the panel
+  const timeout = (ms, promise) =>
+    Promise.race([
+      promise,
+      new Promise((resolve) => setTimeout(() => resolve(null), ms))
+    ]); // ← CLOSES ] and )
 
   async function probeSource(src) {
     if (src.skipFetch) return { src, ok: false }; // don't use as signal
     try {
+      // Uses your resilient fetch helper already in the file
       const html = await timeout(6000, fetchTextWithBetterFallback(src.url));
       const ok = !!html && typeof src.test === "function" && src.test(html);
       return { src, ok };
@@ -1706,17 +1732,16 @@ const timeout = (ms, promise) =>
     }
   }
 
-  // Run probes in parallel
-  const probes = Promise.all(SOURCES.map(probeSource));
+  // Run probes in parallel (VALID: inside async function)
+  const probes = await Promise.all(SOURCES.map(probeSource)); // ← NEED await
   const matched = probes.filter((p) => p.ok);
 
   if (!matched.length) {
-    // Your requirement: show nothing unless we have info to return
     container.innerHTML = `<div class="meta">No matching hits were found on common sources for “${term}”.</div>`;
     return;
   }
 
-  // Render only matched sources; add X (Twitter) link as a convenience if we had any hits
+  // Render only matched sources; add X (Twitter) link as convenience
   const rows = matched.map(({ src }) => linkRow(src.url, src.label));
   const twitter = SOURCES.find((s) => s.skipFetch);
   if (twitter) rows.push(linkRow(twitter.url, twitter.label));
