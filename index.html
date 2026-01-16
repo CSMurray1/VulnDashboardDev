@@ -1659,6 +1659,7 @@ async function loadExploitationWatch() {
 function renderPrevalenceSignals(keyword){ document.getElementById("prevBody").innerHTML = `<div class="meta">Prevalence view not enabled in this build.</div>`; }
 function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence – ${keyword}`; renderPrevalenceSignals(keyword); }
 /* ---------- Relevant Searches ---------- */
+
 async function renderRelevantSearches(term) {
   const container = document.getElementById("searchLinks");
   if (!container) return;
@@ -1692,11 +1693,13 @@ async function renderRelevantSearches(term) {
         (!/We couldn’t find any code/i.test(html) && /aria-label="Code"/i.test(html))
     },
     // CrowdSec CTI page only makes sense for a CVE ID
-    ...(isCve ? [{
-      label: "CrowdSec CTI Explorer",
-      url: `https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`,
-      test: (html) => /CVE-\d{4}-\d{4,}/i.test(html)
-    }] : []),
+    ...(isCve
+      ? [{
+          label: "CrowdSec CTI Explorer",
+          url: `https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`,
+          test: (html) => /CVE-\d{4}-\d{4,}/i.test(html)
+        }]
+      : []),
     // X/Twitter search requires an authenticated session and cannot be reliably fetched cross-origin.
     // We’ll add it *only if* at least one other source matched, as a convenience link.
     {
@@ -1718,6 +1721,43 @@ async function renderRelevantSearches(term) {
     }
   ];
 
+  // Defensive timeout so a single slow site doesn’t stall the panel
+  const timeout = (ms, p) =>
+    Promise.race([p, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+
+  async function probeSource(src) {
+    if (src.skipFetch) return { src, ok: false }; // don't use as signal
+    try {
+      // Uses your existing resilient fetch helper
+      const html = await timeout(6000, fetchTextWithBetterFallback(src.url));
+      const ok = !!html && typeof src.test === "function" && src.test(html);
+      return { src, ok };
+    } catch {
+      return { src, ok: false };
+    }
+  }
+
+  // Run probes in parallel
+  const probes = await Promise.all(SOURCES.map(probeSource));
+  const matched = probes.filter((p) => p.ok);
+
+  if (!matched.length) {
+    // Your requirement: show nothing unless we have info to return
+    container.innerHTML = `<div class="meta">No matching hits were found on common sources for “${term}”.</div>`;
+    return;
+  }
+
+  // Render only matched sources; add X (Twitter) link as a convenience if we had any hits
+  const rows = matched.map(({ src }) => linkRow(src.url, src.label));
+  const twitter = SOURCES.find((s) => s.skipFetch);
+  if (twitter) rows.push(linkRow(twitter.url, twitter.label));
+
+  container.innerHTML = `
+    <div class="item">
+      <div class="title">Relevant Searches</div>
+      <div class="meta">${rows.join("<br>")}</div>
+    </div>`;
+}
   // Defensive timeout so a single slow site doesn’t stall the panel
   const timeout = (ms, p) =>
     Promise.race([p, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
@@ -2695,5 +2735,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   });
+  // ---- END GUARD (temporary) ----
+(function __end_guard__() { return true; })();
 </script>
 </html>
