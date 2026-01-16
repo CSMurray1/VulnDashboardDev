@@ -747,7 +747,7 @@ function generateStaticAnalysis(ctx) {
   const cweText = cwes.length ? cwes.map(c => `- **${c.id || 'Unknown'}** — ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n') : '- **CWE**: No data';
   const epssText = epss ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) — Percentile ${(epss.percentile * 100).toFixed(1)}%` : '- **EPSS**: No data';
   const kevText = kevYes
-  ? `- **CISA KEV**: [Yes](${cisaKevUrl(input)})${String(ransomwareTag).toLowerCase() === 'known' ?wn ransomware campaign use)' : ''}`
+  ? `- **CISA KEV**: ${cisaKevUrl(input})${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}`
   : `- **CISA KEV**: No`;
   return [
     `# ${isCVE ? input : `Analysis: ${input}`}`,
