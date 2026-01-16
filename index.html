@@ -1566,7 +1566,7 @@ function renderRansomwareSearches(cveId){
     linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer — CVE + Ransomware"),
     linkRow(`https://www.google.com/search?q=${q}`, "Google — CVE + Ransomware"),
     linkRow(`https://news.google.com/search?q=${q}`, "Google News — CVE + Ransomware")
-  ].join("");
+  ].join("<br>");
   const container = document.getElementById("searchLinks");
   container.insertAdjacentHTML('beforeend', `<div class="item"><div class="title">Ransomware-Focused Searches</div><div class="meta">${rows}</div></div>`);
 }
