@@ -643,9 +643,10 @@ function cisaKevUrl(cve) {
   
 // Initialize the sound toggle state
 const soundToggle = document.getElementById('watcherSoundToggle');
-if (soundToggle) {
-  const enabled = localStorage.getItem('watcherSoundEnabled') !== 'false';
-  soundToggle.checked = enabled;
+ if (soundToggle) {
+   const enabled = localStorage.getItem('watcherSoundEnabled') !== 'false';
+   soundToggle.checked = enabled;
+
 
   soundToggle.addEventListener('change', () => {
     localStorage.setItem('watcherSoundEnabled', soundToggle.checked ? 'true' : 'false');
@@ -708,8 +709,8 @@ function buildAnalysisPrompt(ctx) {
   const refLines = referencesGrouped.length ? referencesGrouped.map(g => { const links = (g.links || []).slice(0, 4).map(r => ` • ${r.name || r.url}: ${r.url}`).join('\n'); return `- ${g.host}\n${links}`; }).join('\n') : '- References: (none)';
   const epssLine = (epss && typeof epss.score === 'number') ? `EPSS: ${epss.score.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day), Percentile: ${(epss.percentile * 100).toFixed(1)}%` : `EPSS: (no data)`;
   const kevLine = kevYes
-  ? `[CcisaKevUrl(input}) (Ransomware: ${String(ransomwareTag || 'Unknown')})`
-  : `CISA KEV: No`;
+    ? `CISA KEV: ${cisaKevUrl(input)} (Ransomware: ${String(ransomwareTag || 'Unknown')})`
+    : `CISA KEV: No`;
   return [
     `Provide a concise, technically rigorous analysis for ${isCVE ? 'CVE' : 'product'}: ${input}.`,
     ``,
@@ -1250,7 +1251,7 @@ async function runVendorProductSearch(keyword) {
       `;
       document.getElementById("cveContent").innerHTML = fallbackHtml;
       renderRelevantSearches(trimmedKeyword);
-      + await renderRelevantSearches(trimmedKeyword);
+      await renderRelevantSearches(trimmedKeyword);
       toast("Single-word search — showing NVD web link instead");
       console.log("Broad single-word fallback:", nvdWebUrl);
     } else {
@@ -1438,7 +1439,7 @@ const quickLinksHtml = [
 ].join("<br>");
     // Always show relevant searches
     renderRelevantSearches(input);
-    + await renderRelevantSearches(input);
+    await renderRelevantSearches(input);
     if (String(ransomwareTag).toLowerCase()==='known') renderRansomwareSearches(input);
     const cweHtml = buildCweHtml(cveData, nvdJson);
     // Context for AI Analysis
@@ -1659,8 +1660,6 @@ async function loadExploitationWatch() {
 function renderPrevalenceSignals(keyword){ document.getElementById("prevBody").innerHTML = `<div class="meta">Prevalence view not enabled in this build.</div>`; }
 function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence – ${keyword}`; renderPrevalenceSignals(keyword); }
 /* ---------- Relevant Searches ---------- */
-
-
 async function renderRelevantSearches(term) {
   const container = document.getElementById("searchLinks");
   if (!container) return;
@@ -1721,46 +1720,6 @@ async function renderRelevantSearches(term) {
         /<article|class=["']post-title/i.test(html)
     }
   ];
-
-  // Defensive timeout so a single slow site doesn’t stall the panel
-  const timeout = (ms, promise) =>
-    Promise.race([
-      promise,
-      new Promise((resolve) => setTimeout(() => resolve(null), ms))
-    ]);
-
-  async function probeSource(src) {
-    if (src.skipFetch) return { src, ok: false }; // don't use as signal
-    try {
-      // Uses your resilient fetch helper already in the file
-      const html = await timeout(6000, fetchTextWithBetterFallback(src.url));
-      const ok = !!html && typeof src.test === "function" && src.test(html);
-      return { src, ok };
-    } catch {
-      return { src, ok: false };
-    }
-  }
-
-  // Run probes in parallel
-  const probes = await Promise.all(SOURCES.map(probeSource));
-  const matched = probes.filter((p) => p.ok);
-
-  if (!matched.length) {
-    // Requirement: only show content if there are hits
-    container.innerHTML = `<div class="meta">No matching hits were found on common sources for “${term}”.</div>`;
-    return;
-  }
-
-  // Render only matched sources; add X (Twitter) link as a convenience if we had any hits
-  const rows = matched.map(({ src }) => linkRow(src.url, src.label));
-  const twitter = SOURCES.find((s) => s.skipFetch);
-  if (twitter) rows.push(linkRow(twitter.url, twitter.label));
-
-  container.innerHTML = `
-    <div class="item">
-      <div class="title">Relevant Searches</div>
-      <div class="meta">${rows.join("<br>")}</div>
-    </div>`;
 }
 
   // Defensive timeout so a single slow site doesn’t stall the panel
