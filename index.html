@@ -1704,7 +1704,7 @@ async function renderRelevantSearches(term) {
   }
 
   // ✅ now `await` is inside an async function (valid)
-  const probes = await Promise.all(SOURCES.map(probeSource));
+  const probes = Promise.all(SOURCES.map(probeSource));
   const matched = probes.filter((p) => p.ok);
 
   if (!matched.length) {
