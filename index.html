@@ -741,14 +741,21 @@ function buildAnalysisPrompt(ctx) {
   ].join('\n');
 }
 /* ---------- Static Analysis ---------- */
+
 function generateStaticAnalysis(ctx) {
   const { input, isCVE, cnaName, description, kevYes, ransomwareTag, epss, cvss = [], cwes = [] } = ctx || {};
-  const cvssText = cvss.length ? cvss.map(m => `- **CVSS v${m.version}**: ${m.score} _(source: ${m.source}; vector: ${m.vector || 'N/A'})_`).join('\n') : '- **CVSS**: No metrics available';
-  const cweText = cwes.length ? cwes.map(c => `- **${c.id || 'Unknown'}** — ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n') : '- **CWE**: No data';
-  const epssText = epss ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) — Percentile ${(epss.percentile * 100).toFixed(1)}%` : '- **EPSS**: No data';
+  const cvssText = cvss.length
+    ? cvss.map(m => `- **CVSS v${m.version}**: ${m.score} _(source: ${m.source}; vector: ${m.vector || 'N/A'})_`).join('\n')
+    : '- **CVSS**: No metrics available';
+  const cweText = cwes.length
+    ? cwes.map(c => `- **${c.id || 'Unknown'}** — ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n')
+    : '- **CWE**: No data';
+  const epssText = epss
+    ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) — Percentile ${(epss.percentile * 100).toFixed(1)}%`
+    : '- **EPSS**: No data';
   const kevText = kevYes
-  ? `- **CISA KEV**: ${cisaKevUrl(input})${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}`
-  : `- **CISA KEV**: No`;
+    ? `- **CISA KEV**: ${cisaKevUrl(input)}${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}`
+    : `- **CISA KEV**: No`;
   return [
     `# ${isCVE ? input : `Analysis: ${input}`}`,
     ``,
