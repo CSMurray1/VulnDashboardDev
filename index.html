@@ -1689,12 +1689,11 @@ async function renderRelevantSearches(term) {
       test: (html) => /<article|class=["']post-title/i.test(html) }
   ];
 
-  const timeout = (ms, promise) =>
-    Promise.race([ promise, new Promise((resolve) => setTimeout(() => resolve(null), ms)) ]);
-
-  // Defensive timeout so a single slow site doesn’t stall the panel
-  const timeout = (ms, p) =>
-    Promise.race([p, new Promise((resolve) => setTimeout(() => resolve(null), ms))]);
+// Defensive timeout so a single slow site doesn’t stall the panel
+const timeout = (ms, promise) =>
+  Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => resolve(null), ms))
 
   async function probeSource(src) {
     if (src.skipFetch) return { src, ok: false }; // don't use as signal
