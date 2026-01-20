@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Vulnerability Dashboard</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='90' text-anchor='middle' x='50'%3E%F0%9F%AA%B2%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪲</text></svg>'" />
 <!-- ===== Global Styles ===== -->
 <style>
 :root {
@@ -109,7 +109,7 @@ header.cve-header h1::before {
   display: block;
   width: 36px;
   height: 36px;
-  background: url("data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 100 100&quot;><text y=&quot;.9em&quot; font-size=&quot;90&quot; text-anchor=&quot;middle&quot; x=&quot;50&quot;>🪲</text></svg>") center / contain no-repeat;
+  background: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪲</text></svg>') center/cover no-repeat;
 }
 #cve {
   flex: 1;
@@ -141,11 +141,13 @@ body.dark .btn {
 }
 /* Dashboard 1 Layout */
 main.cve-main {
+  padding: 24px;
   display: grid;
-  grid-template-columns: 1fr 1fr 350px;
+  grid-template-columns: 1fr 1fr 320px;
   grid-template-areas:
     "details details watch"
     "sources relevant vulncheck";
+  gap: 20px;
 }
 @media (max-width:1400px) {
   main.cve-main {
@@ -169,24 +171,10 @@ main.cve-main {
   }
 }
 #cveDetails { grid-area: details; }
-#exploitationWatch {
-  display: flex;
-  flex-direction: column;
-  height: 100%; /* Fill its grid cell */
-  min-height: 120px; /* Prevent collapsing */
-  max-height: none; /* Remove old fixed cap */
-}
-#exploitationWatch > header {
-  flex: 0 0 auto;             /* don't grow/shrink */
-}
-#watchContent:empty {
-  min-height: 120px; /* fallback */
-  max-height: 200px; /* roughly 5 items */
-}
+#exploitationWatch { grid-area: watch; }
 #vulncheckMonitor { grid-area: vulncheck; }
 #notableSources { grid-area: sources; }
 #relevantSearches { grid-area: relevant; }
-
 /* Panels */
 .panel {
   background: var(--panel-light);
@@ -331,7 +319,7 @@ body.dark .metrics-box { background: rgba(13,110,253,0.2); }
   justify-content:center;
   z-index:1200;
 }
-/* Modal (Attack Visualizer.) */
+/* Modal (Attack Visualizer) */
 #attackModal {
   display:none;
   position:fixed;
@@ -472,25 +460,13 @@ body.dark .feed ul li a { color: #5caeff; }
 /* Watcher notify panel */
 #watcherNotify {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  bottom: 24px;
+  right: 24px;
+  max-width: 520px;
   z-index: 1400;
   display: none;
-  max-width: 500px; /* Wider for content */
-  width: 90%; /* Responsive */
-  padding: 16px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  background: var(--panel-light);
-  color: var(--text-light);
-  border: 1px solid var(--border-light);
 }
-body.dark #watcherNotify {
-  background: var(--panel-dark);
-  color: var(--text-dark);
-  border: 1px solid var(--border-dark);
-}
+/* Dark mode fix for Watcher textarea placeholder */
 body.dark #watcherList::placeholder { color: #bbb; }
 /* Force dark mode for AI Analysis modal outer container */
 body.dark #analysisModal > div {
@@ -500,11 +476,9 @@ body.dark #analysisModal > div {
 }
 /* Exploitation Watcher Scrollbar */
 #watchContent {
-  flex: 1 1 0%;             /* or flex: 1 1 0px */
-  min-height: 0;
+  max-height: 320px;
   overflow-y: auto;
-  display: flex;            /* optional but often helps nested content */
-  flex-direction: column;
+  border-radius: 6px;
   padding: 12px;
   background: #fafafa;
 }
@@ -518,24 +492,12 @@ body.dark #watchContent {
   background: #aaa;
   border-radius: 4px;
 }
-#watchContent::-webkit-scrollbar-thumb {
-  background: #aaa;
-  border-radius: 4px;
-}
 body.dark #watchContent::-webkit-scrollbar-thumb {
   background: #666;
-}
-body.dark #watchContent::-webkit-scrollbar-thumb {
-  background: #666;
-}
-body.dark #watchContent {
-  background: #1e1e1e;
 }
 </style>
 </head>
 <body class="light">
-<!-- CVE Watcher sound (hidden) -->
-<audio id="watcherSound" preload="auto" src="https://actions.google.com/sounds/v1/alarms/httpshort.ogg"></audio>
 <button class="mode" onclick="toggleMode()">Dark Mode</button>
 <nav>
   <button onclick="switchTab(0)" class="active">CVE Dashboard</button>
@@ -597,6 +559,13 @@ function toast(msg) {
   t.style.display = "block";
   setTimeout(() => t.style.display = "none", 3000);
 }
+function linkRow(url, label) {
+  const safeLabel = label || url;
+  // Return an <a> tag with a proper `href`
+  return `
+    <a href="${url}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>
+  `;
+}
 function toggleMode() {
   document.body.classList.toggle('dark');
   const modeBtn = document.querySelector(".mode");
@@ -614,44 +583,6 @@ function initTheme() {
   }
   document.getElementById("theme")?.addEventListener("click", toggleMode);
 }
-
-/* ---------- Utility Helpers ---------- */
-function severityFromScore(score) {
-  return score < 4 ? 'Low' : score < 7 ? 'Medium' : score < 9 ? 'High' : 'Critical';
-}
-
-function classFromScore(score) {
-  return score < 4 ? 'low' : score < 7 ? 'medium' : score < 9 ? 'high' : 'critical';
-}
-
-function capFirst(str) {
-  return (str || '').charAt(0).toUpperCase() + (str || '').slice(1);
-}
-
-function normalizeSsvcValue(val) {
-  return (val || 'N/A').toLowerCase().replace(/^(active|none|proof-of-concept|sporadic)$/i, m => m.toLowerCase());
-}
-
-function linkRow(url, label) {
-  const safeLabel = label || url;
-  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>`;
-}
-
-// Helper to build the CISA KEV catalog URL for a CVE
-function cisaKevUrl(cve) {
-  return `https://www.cisa.gov/known-exploited-vulnerabilities-catalog?field_cve=${encodeURIComponent(cve)}`;
-}
-// Initialize the sound toggle state
-const soundToggle = document.getElementById('watcherSoundToggle');
- if (soundToggle) {
-   const enabled = localStorage.getItem('watcherSoundEnabled') !== 'false';
-   soundToggle.checked = enabled;
-   soundToggle.addEventListener('change', () => {
-    localStorage.setItem('watcherSoundEnabled', soundToggle.checked ? 'true' : 'false');
-    toast && toast(soundToggle.checked ? 'Sound notifications enabled' : 'Sound notifications disabled');
-  });
-}
-  
 /* ---------- CWE Builder ---------- */
 function buildCweHtml(cveJson, nvdJson) {
   const rows = [];
@@ -706,9 +637,7 @@ function buildAnalysisPrompt(ctx) {
   const cweLines = cwes.length ? cwes.map(c => `- ${c.id || 'Unknown'} — ${c.desc || 'No description'} (Assigner: ${c.assigner || 'Unknown'})`).join('\n') : '- CWE: (none)';
   const refLines = referencesGrouped.length ? referencesGrouped.map(g => { const links = (g.links || []).slice(0, 4).map(r => ` • ${r.name || r.url}: ${r.url}`).join('\n'); return `- ${g.host}\n${links}`; }).join('\n') : '- References: (none)';
   const epssLine = (epss && typeof epss.score === 'number') ? `EPSS: ${epss.score.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day), Percentile: ${(epss.percentile * 100).toFixed(1)}%` : `EPSS: (no data)`;
-  const kevLine = kevYes
-    ? `CISA KEV: ${cisaKevUrl(input)} (Ransomware: ${String(ransomwareTag || 'Unknown')})`
-    : `CISA KEV: No`;
+  const kevLine = kevYes ? `CISA KEV: Yes (Ransomware: ${String(ransomwareTag || 'Unknown')})` : `CISA KEV: No`;
   return [
     `Provide a concise, technically rigorous analysis for ${isCVE ? 'CVE' : 'product'}: ${input}.`,
     ``,
@@ -740,21 +669,12 @@ function buildAnalysisPrompt(ctx) {
   ].join('\n');
 }
 /* ---------- Static Analysis ---------- */
-
 function generateStaticAnalysis(ctx) {
   const { input, isCVE, cnaName, description, kevYes, ransomwareTag, epss, cvss = [], cwes = [] } = ctx || {};
-  const cvssText = cvss.length
-    ? cvss.map(m => `- **CVSS v${m.version}**: ${m.score} _(source: ${m.source}; vector: ${m.vector || 'N/A'})_`).join('\n')
-    : '- **CVSS**: No metrics available';
-  const cweText = cwes.length
-    ? cwes.map(c => `- **${c.id || 'Unknown'}** — ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n')
-    : '- **CWE**: No data';
-  const epssText = epss
-    ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) — Percentile ${(epss.percentile * 100).toFixed(1)}%`
-    : '- **EPSS**: No data';
-  const kevText = kevYes
-    ? `- **CISA KEV**: ${cisaKevUrl(input)}${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}`
-    : `- **CISA KEV**: No`;
+  const cvssText = cvss.length ? cvss.map(m => `- **CVSS v${m.version}**: ${m.score} _(source: ${m.source}; vector: ${m.vector || 'N/A'})_`).join('\n') : '- **CVSS**: No metrics available';
+  const cweText = cwes.length ? cwes.map(c => `- **${c.id || 'Unknown'}** — ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n') : '- **CWE**: No data';
+  const epssText = epss ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) — Percentile ${(epss.percentile * 100).toFixed(1)}%` : '- **EPSS**: No data';
+  const kevText = kevYes ? `- **CISA KEV**: Yes${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}` : '- **CISA KEV**: No';
   return [
     `# ${isCVE ? input : `Analysis: ${input}`}`,
     ``,
@@ -904,405 +824,80 @@ async function loadVulnCheck() {
 /* ---------- KEV ---------- */
 const KEV_JSON_URLS = [
   'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',
-  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json',
-  'https://corsproxy.io/?' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'),
-  'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json')
+  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'
 ];
-
-// --- GLOBAL: CORS-tolerant text fetcher (single source of truth) ---
-async function fetchTextWithFallback(url) {
-  const attempts = [
-    { name: 'direct',        getUrl: () => url },
-    { name: 'corsproxy.io',  getUrl: () => `https://corsproxy.io/?${encodeURIComponent(url)}` },
-    { name: 'allorigins',    getUrl: () => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}` },
-    { name: 'jina',          getUrl: () => `https://r.jina.ai/${url.replace(/^https?:\/\//, '')}` }
-  ];
-
-  for (const attempt of attempts) {
-    try {
-      const res = await fetch(attempt.getUrl(), {
-        mode: 'cors',
-        cache: 'no-store',
-        headers: { 'Accept': 'application/json,text/plain,*/*' }
-      });
-      if (res.ok) {
-        return await res.text();
-      }
-      console.warn(`${attempt.name} HTTP ${res.status}`);
-    } catch (err) {
-      console.warn(`${attempt.name} failed: ${err.message}`);
-    }
-  }
-  throw new Error(`All fetch attempts failed for ${url}`);
-}
-
-let kevCache = { loaded: false, data: null, ts: 0 };
-
+let kevCache = { loaded:false, data:null, ts:0 };
 async function loadKEV() {
-  // Cache: 60 minutes
-  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60 * 60 * 1000) {
-    console.log('KEV cache fresh');
-    return kevCache.data;
-  }
-
+  if (kevCache.loaded && kevCache.data && (Date.now() - kevCache.ts) < 60*60*1000) return kevCache.data;
   for (const url of KEV_JSON_URLS) {
-    try {
-      const text = await fetchTextWithFallback(url);
-
-      // Quick JSON sanity check: must start with '{' or '['
-      const trimmed = (text || '').trim();
-      if (!trimmed || !/^[\[{]/.test(trimmed)) {
-        console.warn(`KEV ${url} returned non-JSON payload (${trimmed.slice(0, 60)}...)`);
-        continue;
-      }
-
-      let json;
-      try {
-        json = JSON.parse(trimmed);
-      } catch (parseErr) {
-        console.warn(`KEV ${url} parse error: ${parseErr.message}`);
-        continue;
-      }
-
-      const vulns = Array.isArray(json) ? json : (json.vulnerabilities || []);
-      if (!Array.isArray(vulns)) {
-        console.warn(`KEV ${url} unexpected structure — no 'vulnerabilities' array`);
-        continue;
-      }
-
-      kevCache = { loaded: true, data: vulns, ts: Date.now() };
-      console.log(`KEV loaded (${vulns.length} entries)`);
-      return vulns;
-    } catch (err) {
-      console.warn(`KEV ${url} failed: ${err.message}`);
-    }
+    try { const res = await fetch(url, { cache:'no-store' }); if (!res.ok) continue; const json = await res.json(); kevCache.data = Array.isArray(json) ? json : (json.vulnerabilities || json); kevCache.loaded = true; kevCache.ts = Date.now(); return kevCache.data; } catch {}
   }
-
-  // Fallthrough: fail-safe
-  kevCache = { loaded: true, data: [], ts: Date.now() };
-  console.error('All KEV sources failed — proceeding without KEV');
-  return [];
+  throw new Error('Unable to load CISA KEV data');
 }
-
-// Keep this small helper as-is
-function getKevEntry(cveId) {
-  if (!kevCache.loaded || !kevCache.data) return null;
-  const up = cveId.toUpperCase();
-  return kevCache.data.find(e => (e.cveID || e.cveId || '').toUpperCase() === up) || null;
-}
+async function getKevEntry(cveId) { const kev = await loadKEV(); const up = cveId.toUpperCase(); return kev.find(e => (e.cveID || e.cveId) === up) || null; }
 /* ---------- SSVC helpers ---------- */
 /* [unchanged helpers: normalizeSsvcValue, capFirst, extractSsvcDeep] */
 function normalizeSsvcValue(val) { return (val || 'N/A').toLowerCase().replace(/^(active|none|proof-of-concept|sporadic)$/i, m => m.toLowerCase()); }
 function capFirst(str) { return (str || '').charAt(0).toUpperCase() + str.slice(1); }
 function extractSsvcDeep(obj) {
   const decisionPoints = { exploitation: 'N/A', automatable: 'N/A', technicalImpact: 'N/A', decision: 'N/A' };
-  if (typeof obj !== 'object' || !obj || !Array.isArray(obj.options)) return decisionPoints;
-
-  obj.options.forEach(opt => {
-    if (typeof opt !== 'object' || !opt) return;
-    for (const key in opt) {
-      const normKey = key.toLowerCase().replace(/\s+/g, '_');
-      const val = opt[key];
-      if (normKey === 'exploitation') decisionPoints.exploitation = normalizeSsvcValue(val);
-      if (normKey === 'automatable') decisionPoints.automatable = normalizeSsvcValue(val);
-      if (normKey === 'technical_impact') decisionPoints.technicalImpact = normalizeSsvcValue(val);
-      if (normKey === 'decision') decisionPoints.decision = normalizeSsvcValue(val);
+  const traverse = (o) => {
+    if (typeof o !== 'object' || !o) return;
+    for (const key in o) {
+      if (key === 'exploitation') decisionPoints.exploitation = normalizeSsvcValue(o[key]);
+      if (key === 'automatable') decisionPoints.automatable = normalizeSsvcValue(o[key]);
+      if (key === 'technical_impact') decisionPoints.technicalImpact = normalizeSsvcValue(o[key]);
+      if (key === 'decision') decisionPoints.decision = normalizeSsvcValue(o[key]);
+      traverse(o[key]);
     }
-  });
-
+  };
+  traverse(obj);
   return decisionPoints;
 }
 /* ---------- Vendor/Product helpers ---------- */
+/* [unchanged helpers: severityFromScore, classFromScore, tokensFromQuery, cpeTokensMatch, vulnMatchesTokens, fetchNvdCvesByKeyword, renderVendorProductResults, runVendorProductSearch] */
+function severityFromScore(score) { return score < 4 ? 'Low' : score < 7 ? 'Medium' : score < 9 ? 'High' : 'Critical'; }
+function classFromScore(score) { return score < 4 ? 'low' : score < 7 ? 'medium' : score < 9 ? 'high' : 'critical'; }
 function tokensFromQuery(query) { return query.toLowerCase().split(/\s+/).filter(t => t.length > 1); }
 function cpeTokensMatch(cpe, tokens) { if (!cpe) return false; const parts = cpe.toLowerCase().split(':'); return tokens.every(t => parts.some(p => p.includes(t))); }
 function vulnMatchesTokens(vuln, tokens) { const desc = vuln?.cve?.descriptions?.[0]?.value?.toLowerCase() || ''; const refs = vuln?.cve?.references?.flatMap(r => r.url.toLowerCase() || []) || []; return tokens.every(t => desc.includes(t) || refs.some(u => u.includes(t))); }
-
-// Global state for pagination (vendor/product mode only)
-let vendorSearchState = {
-  keyword: '',
-  currentStartIndex: 0,
-  totalResults: 0,
-  resultsPerPage: 50,
-  allVulns: []  // accumulate all loaded CVEs
-};
-
-// Add near vendorSearchState declaration
-let previousVendorSearch = null;  // { keyword, allVulns, currentStartIndex, totalResults }  
-  
-/* ---------- NVD API Helpers ---------- */
-async function fetchFromNVD(endpoint, params = {}) {
-  const query = new URLSearchParams({
-    ...params,
-    resultsPerPage: params.resultsPerPage || 50
-  }).toString();
-
-  const url = `https://services.nvd.nist.gov/rest/json/${endpoint}?${query}`;
-  console.log(`Fetching NVD: ${url}`);
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`NVD HTTP ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.error(`NVD fetch error (${endpoint}):`, err);
-    return { vulnerabilities: [], totalResults: 0, products: [] };
-  }
+async function fetchNvdCvesByKeyword(keyword) {
+  try { const res = await fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?keywordSearch=${encodeURIComponent(keyword)}&resultsPerPage=20`); return await res.json(); } catch { return { vulnerabilities: [] }; }
 }
-
-async function fetchNvdCvesByKeyword(keyword, startIndex = 0) {
-  return fetchFromNVD('cves/2.0', {
-    keywordSearch: keyword,
-    startIndex
-    // pubStartDate removed — lets API return all matching results by default
-  });
-}
-  
-async function fetchCPEs(keyword) {
-  const data = await fetchFromNVD('cpes/2.0', {
-    keywordSearch: keyword,
-    resultsPerPage: 10
-  });
-  return data.products || [];
-}
-  
-/* ---------- Rendering Helpers ---------- */
-function getSeverityChip(score) {
-  const sev = severityFromScore(score);
-  const cls = classFromScore(score);
-  return `<span class="chip ${cls}">${sev} (${score || 'N/A'})</span>`;
-}
-
-function getKevBadges(cveId) {
-  if (!cveId || typeof cveId !== 'string' || !cveId.startsWith('CVE-')) return '';
-  if (!kevCache.loaded || !Array.isArray(kevCache.data)) return ''; // ← guard
-
-  const entry = getKevEntry(cveId);
-  if (!entry || !entry.cveID) return '';
-
-  let badges = `<span class="chip critical" style="background:#a60000; margin-left:8px;">KEV</span>`;
-  if (String(entry.knownRansomwareCampaignUse).toLowerCase() === 'known') {
-    badges += `<span class="chip yes" style="margin-left:4px;">Ransomware</span>`;
-  }
-  return badges;
-}
-  
-function renderVendorProductResults(data, searchTerm = '', isAppend = false) {
-  const vulns = data.vulnerabilities || [];
-  const total = data.totalResults || vendorSearchState.totalResults;
+function renderVendorProductResults(json) {
+  const vulns = json.vulnerabilities || [];
   let html = '';
-
-  // Update pagination state
-  vendorSearchState.keyword = searchTerm;
-  vendorSearchState.totalResults = total;
-  vendorSearchState.currentStartIndex = data.startIndex + vulns.length;
-
-  // Accumulate vulnerabilities
-  if (!isAppend) {
-    vendorSearchState.allVulns = [];
-  }
-  vendorSearchState.allVulns.push(...vulns);
-
-  // ────────────────────────────────────────────────
-  // SORT HERE: newest published date first (descending)
-  // We sort the accumulated list every time we render
-  // ────────────────────────────────────────────────
-  vendorSearchState.allVulns.sort((a, b) => {
-    const dateA = a.cve?.published ? new Date(a.cve.published) : new Date(0);
-    const dateB = b.cve?.published ? new Date(b.cve.published) : new Date(0);
-    return dateB - dateA;  // descending = newest first
+  vulns.forEach(vuln => {
+    const cve = vuln?.cve; if (!cve) return;
+    const id = cve.id || 'Unknown';
+    const desc = cve.descriptions?.[0]?.value || 'No description';
+    const score = cve.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore || 0;
+    const sev = severityFromScore(score);
+    const cls = classFromScore(score);
+    html += `<div class="item"><div class="title">${id} <span class="chip ${cls}">${sev} (${score})</span></div><div class="meta">${desc}</div></div>`;
   });
-
-  // Header with total count
-  if (total > 0) {
-  const shown = vendorSearchState.allVulns.length;
-  const more = shown < total ? ` (showing first ${shown} of ${total.toLocaleString()})` : '';
-  html += `
-    <div class="item" style="background:rgba(13,110,253,0.08); padding:12px; border-radius:8px; margin-bottom:16px;">
-      <div class="title" style="font-size:1.1em;">
-        Found ${total.toLocaleString()} CVEs for "${searchTerm}"${more}
-      </div>
-      <div class="meta" style="color:#0d6efd; font-weight:500;">
-        Sorted: Newest published first • ${shown} displayed
-      </div>
-    </div>`;
-  
-    if (total < 20) {
-      html += `<div class="meta" style="color:#e65100; margin-bottom:12px;">
-        (Few results — try more specific terms like "${searchTerm} Server")
-      </div>`;
-    }
-  } else {
-    html += '<div class="meta">No matching vulnerabilities found.</div>';
-  }
-
-  // Render the now-sorted items
-  vendorSearchState.allVulns.forEach(vuln => {
-  const cve = vuln?.cve || {};
-  const id = cve.id || 'Unknown';
-  const desc = cve.descriptions?.[0]?.value || 'No description';
-  const published = cve.published ? new Date(cve.published).toLocaleDateString() : '—';
-  const score = cve.metrics?.cvssMetricV31?.[0]?.cvssData?.baseScore ||
-                cve.metrics?.cvssMetricV40?.[0]?.cvssData?.baseScore || 0;
-
-  html += `
-    <div class="item">
-      <div class="title">
-        <a href="#" class="cve-link" data-cve="${id}" style="color: var(--link-light); font-weight: 600;">
-          ${id}
-        </a>
-        ${getSeverityChip(score)} ${getKevBadges(id) || ''}
-      </div>
-      <div class="meta">
-        Published: ${published}<br>
-        ${desc.substring(0, 180)}${desc.length > 180 ? '...' : ''}
-      </div>
-    </div>`;
-  });
-
   const content = document.getElementById('cveContent');
-  if (isAppend) {
-    content.innerHTML += html;
-  } else {
-    content.innerHTML = html;
-  }
-
-  // Load more button logic
-  const hasMore = vendorSearchState.allVulns.length < total;
-  let btn = document.getElementById('loadMoreBtn');
-  if (hasMore && !btn) {
-    btn = document.createElement('button');
-    btn.id = 'loadMoreBtn';
-    btn.className = 'btn';
-    btn.textContent = 'Load more (50 more)';
-    btn.style.marginTop = '16px';
-    btn.onclick = loadNextPage;
-    content.appendChild(btn);
-  } else if (btn) {
-    btn.style.display = hasMore ? 'block' : 'none';
-    btn.textContent = hasMore ? 'Load more (50 more)' : 'All loaded';
-  }
-
-  renderRelevantSearches(searchTerm);
+  content.innerHTML = html || '<div class="meta">No matching vulnerabilities found.</div>';
+  renderRelevantSearches(keyword);
 }
-
-async function loadNextPage() {
-  const { keyword, currentStartIndex } = vendorSearchState;
-  if (!keyword) return;
-
-  const loadingEl = document.getElementById("loading");
-  if (loadingEl) loadingEl.style.display = "flex";
-
-  try {
-    // Show delay message if using rate-limit delay
-    // toast("Waiting 6 seconds for NVD rate limit...");  // optional
-
-    // Uncomment if no API key
-    // await new Promise(resolve => setTimeout(resolve, 6000));
-
-    const data = await fetchNvdCvesByKeyword(keyword, currentStartIndex);
-    renderVendorProductResults(data, keyword, true);
-  } catch (err) {
-    console.error("Pagination fetch error:", err);
-    toast("Failed to load more results");
-  } finally {
-    if (loadingEl) loadingEl.style.display = "none";
-  }
-}
-
 async function runVendorProductSearch(keyword) {
-  if (!keyword || typeof keyword !== 'string' || keyword.trim() === '') {
-    toast("Invalid search term for vendor/product");
-    return;
-  }
-  const trimmedKeyword = keyword.trim();
-  console.log("Vendor/Product search started for:", trimmedKeyword);
-  const words = trimmedKeyword.split(/\s+/).filter(w => w.length > 0);
-  const wordCount = words.length;
-  vendorSearchState = {
-    keyword: trimmedKeyword,
-    currentStartIndex: 0,
-    totalResults: 0,
-    resultsPerPage: 50,
-    allVulns: []
-  };
-  const loadingEl = document.getElementById("loading");
-  if (loadingEl) loadingEl.style.display = "flex";
+  const loadingEl = document.getElementById("loading"); if (loadingEl) loadingEl.style.display = "flex";
   try {
-    // Single-word = broad → show warning + web link only
-    if (wordCount === 1) {
-      const webQuery = encodeURIComponent(trimmedKeyword);
-      const nvdWebUrl = `https://nvd.nist.gov/vuln/search/results?form_type=Basic&results_type=overview&query=${webQuery}&search_type=all`;
-      const fallbackHtml = `
-        <div class="item" style="background:rgba(255,193,7,0.1); padding:16px; border-radius:8px;">
-          <div class="title" style="font-size:1.2em; color:#e65100;">Broad search detected</div>
-          <div class="meta" style="margin-top:12px;">
-            Single-word searches like "${trimmedKeyword}" are too broad for the NVD API.<br><br>
-            <a href="${nvdWebUrl}" target="_blank" style="color:#0d6efd; font-weight:bold;">
-              Open full NVD web search for "${trimmedKeyword}" (recommended)
-            </a><br>
-            (usually shows hundreds or thousands of results)
-          </div>
-        </div>
-        <div class="meta" style="margin-top:16px;">
-          Tip: Try adding a product/version (e.g., "${trimmedKeyword} Server", "${trimmedKeyword} 7")
-        </div>
-      `;
-      document.getElementById("cveContent").innerHTML = fallbackHtml;
-      renderRelevantSearches(trimmedKeyword);
-      await renderRelevantSearches(trimmedKeyword);
-      toast("Single-word search — showing NVD web link instead");
-      console.log("Broad single-word fallback:", nvdWebUrl);
-    } else {
-      // 2+ words → use API
-      const data = await fetchNvdCvesByKeyword(trimmedKeyword, 0);
-      console.log("CVE response:", {
-        total: data.totalResults,
-        returned: data.vulnerabilities?.length || 0,
-        first: data.vulnerabilities?.[0]?.cve?.id || "none"
-      });
-      // Always render results
-      renderVendorProductResults(data, trimmedKeyword, false);
-      // Add advisory if low count
-      if (data.totalResults <= 50 && data.totalResults > 0) {
-        const webQuery = encodeURIComponent(trimmedKeyword);
-        const nvdWebUrl = `https://nvd.nist.gov/vuln/search/results?form_type=Basic&results_type=overview&query=${webQuery}&search_type=all`;
-        const advisoryHtml = `
-          <div class="item" style="background:rgba(255,193,7,0.1); padding:16px; border-radius:8px; margin-bottom:16px;">
-            <div class="title" style="font-size:1.2em; color:#e65100;">Limited API Results (${data.totalResults})</div>
-            <div class="meta" style="margin-top:12px;">
-              The NVD API only found ${data.totalResults} matches for "${trimmedKeyword}".<br>
-              Broad or common terms sometimes return few results in the API.<br><br>
-              <a href="${nvdWebUrl}" target="_blank" style="color:#0d6efd; font-weight:bold;">
-                View full NVD web search results here
-              </a><br>
-              (often shows many more entries)
-            </div>
-          </div>
-        `;
-        const content = document.getElementById("cveContent");
-        content.insertAdjacentHTML('afterbegin', advisoryHtml);
-        toast(`Only ${data.totalResults} results — web link added for more`);
-      }
-      renderRelevantSearches(trimmedKeyword);
-      await renderRelevantSearches(trimmedKeyword);
-    }
+    const json = await fetchNvdCvesByKeyword(keyword);
+    renderVendorProductResults(json);
   } catch (err) {
-    console.error("Search failed:", err);
-    document.getElementById("cveContent").innerHTML = `
-      <div class="meta">Error: ${err.message || 'NVD service issue'}. Try a different term.</div>
-    `;
-    renderRelevantSearches(trimmedKeyword);
-    + await renderRelevantSearches(trimmedKeyword);
-  } finally {
-    if (loadingEl) loadingEl.style.display = "none";
-  }
+    document.getElementById("cveContent").innerHTML = `<div class="meta">Error loading data: ${err.message}</div>`;
+    renderRelevantSearches(keyword);
+  } finally { if (loadingEl) loadingEl.style.display = "none"; }
 }
 /* ---------- CVE flow ---------- */
 /* [unchanged: isCVE, runSearch] */
 function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
+
 async function runSearch() {
   const inputRaw = (document.getElementById("cve")?.value || "").trim();
   const input = inputRaw.toUpperCase();
+
   // If not CVE, delegate to vendor/product search
   if (!isCVE(input)) {
     if (inputRaw.length < 2) {
@@ -1311,9 +906,31 @@ async function runSearch() {
     }
     return runVendorProductSearch(inputRaw);
   }
+
   // Show loading overlay
   const loadingEl = document.getElementById("loading");
   if (loadingEl) loadingEl.style.display = "flex";
+
+  // --- helper: try KEV date from multiple sources (feed + localStorage map) ---
+  function getKevAddedDate(kevObj, cveIdUpper) {
+    // 1) direct from the object returned by loadKEV()
+    let d = '';
+    if (kevObj) {
+      d = kevObj.dateAdded || kevObj.date_added || '';
+      if (d) return d;
+    }
+    // 2) fallback to the watcher map persisted in localStorage
+    try {
+      const map = JSON.parse(localStorage.getItem('cveWatcher.kevMap') || '{}') || {};
+      const entry = map[cveIdUpper];
+      if (entry) {
+        return entry.dateAdded || entry.date_added || '';
+      }
+    } catch { /* ignore parse errors */ }
+    // 3) no date found
+    return '';
+  }
+
   try {
     // Fetch CNA (CVE Services), NVD, EPSS in parallel
     const [cveRes, nvdRes, epssRes] = await Promise.all([
@@ -1322,27 +939,43 @@ async function runSearch() {
       fetch(`https://api.first.org/data/v1/epss?cve=${input}`)
     ]);
     if (!cveRes.ok) throw new Error("CVE not found");
-    // KEV / Ransomware tag
-    const kevEntry = getKevEntry(input);
+
+    // KEV + ransomware tag
+    const kevEntry = await getKevEntry(input).catch(() => null);
     const kevYes = !!kevEntry;
     const ransomwareTag = kevEntry ? (kevEntry.knownRansomwareCampaignUse || 'Unknown') : 'Unknown';
+
+    // ✅ robust KEV date resolution
+    const kevDateRaw = getKevAddedDate(kevEntry, input);
+    const kevAddedPretty = kevDateRaw ? new Date(kevDateRaw).toLocaleDateString() : '';
+    const kevLabel = kevYes
+      ? `CISA KEV: Yes${kevAddedPretty ? ` — Added: ${kevAddedPretty}` : ''}`
+      : 'CISA KEV: No';
+
     // CNA record
     const cveData = await cveRes.json();
     const cna = cveData?.containers?.cna || {};
     const desc = cna?.descriptions?.[0]?.value || "No description";
     const cnaName = cna?.providerMetadata?.shortName || "Unknown";
     const adpProviders = Array.isArray(cveData?.containers?.adp) ? cveData.containers.adp : [];
-    const published = cveData.cveMetadata?.datePublished ? new Date(cveData.cveMetadata.datePublished).toLocaleDateString() : 'N/A';
+    const published = cveData.cveMetadata?.datePublished
+      ? new Date(cveData.cveMetadata.datePublished).toLocaleDateString()
+      : 'N/A';
+
     // SSVC block (best effort)
     let ssvcInlineHtml = '';
     try {
-      const allMetrics = (adpProviders || []).flatMap(p => (p.metrics || []).map(m => ({ provider:p, metric:m })));
+      const allMetrics = (adpProviders || [])
+        .flatMap(p => (p.metrics || []).map(m => ({ provider: p, metric: m })));
       const ssvcMetricEntry =
-        allMetrics.find(({provider, metric}) =>
+        allMetrics.find(({ provider, metric }) =>
           (provider?.providerMetadata?.shortName || '').toLowerCase().includes('cisa') &&
           metric?.other && String(metric.other.type || '').toLowerCase() === 'ssvc'
         ) ||
-        allMetrics.find(({metric}) => metric?.other && String(metric.other.type || '').toLowerCase() === 'ssvc');
+        allMetrics.find(({ metric }) =>
+          metric?.other && String(metric.other.type || '').toLowerCase() === 'ssvc'
+        );
+
       const ssvcContent = ssvcMetricEntry?.metric?.other?.content;
       const parsed = extractSsvcDeep(ssvcContent);
       const exploitation = capFirst(parsed.exploitation);
@@ -1350,6 +983,7 @@ async function runSearch() {
       const technicalImpact = capFirst(parsed.technicalImpact);
       const decision = capFirst(parsed.decision);
       const providerName = ssvcMetricEntry?.provider?.providerMetadata?.shortName || 'ADP';
+
       ssvcInlineHtml = `
         <div class="metrics-box">
           <div class="title">SSVC Metrics (${providerName})</div>
@@ -1360,6 +994,7 @@ async function runSearch() {
             ${decision !== 'N/A' ? `<tr><th>Decision</th><td>${decision}</td></tr>` : ''}
           </table>
         </div>`;
+
       if (!ssvcMetricEntry || !ssvcContent) {
         ssvcInlineHtml = `
         <div class="metrics-box">
@@ -1374,6 +1009,151 @@ async function runSearch() {
         <table><tr><th>Status</th><td>No SSVC Data is Available at this time.</td></tr></table>
       </div>`;
     }
+
+    // EPSS block
+    const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
+    const epssDateStr = epssData?.date ? `(as of ${new Date(epssData.date).toLocaleString()})` : '';
+    const epssInlineHtml = epssData ? `
+      <div class="metrics-box">
+        <div class="title">EPSS Metrics</div>
+        <table>
+          <tr><th>EPSS Score</th><td>${Number(epssData.epss).toFixed(4)} ${epssDateStr}</td></tr>
+          <tr><th>30-day Probability</th><td>${(Number(epssData.epss) * 100).toFixed(2)}% ${epssDateStr}</td></tr>
+          <tr><th>Percentile</th><td>${(Number(epssData.percentile) * 100).toFixed(1)}% ${epssDateStr}</td></tr>
+        </table>
+      </div>` : `
+      <div class="metrics-box">
+        <div class="title">EPSS Metrics</div>
+        <table><tr><th>Status</th><td>No EPSS data available</td></tr></table>
+      </div>`;
+
+    // References (by host) from CNA
+    const refs = (cna.references || []).filter(r => r.url && r.url.startsWith('https://'));
+    const grouped = refs.reduce((acc, r) => {
+      let host;
+      try { host = new URL(r.url).hostname.replace(/^www\./, ''); } catch { host = "link"; }
+      (acc[host] ||= []).push(r);
+      return acc;
+    }, {});
+    const refsHtml = Object.keys(grouped).map(host => {
+      const list = grouped[host];
+      return `
+        <div class="item">
+          <div class="title">${host} (${list.length})</div>
+          <div class="meta">${ list.map(r => linkRow(r.url, r.name || r.url)).join("") }</div>
+        </div>`;
+    }).join("") || '<div class="meta">No references found.</div>';
+    document.getElementById("sourcesContent").innerHTML = refsHtml;
+
+    // CVSS metrics (CNA + NVD)
+    const metrics = [];
+    (cna.metrics || []).forEach(m => {
+      if (m.cvssV3_1) metrics.push({
+        score: m.cvssV3_1.baseScore, version: "3.1",
+        source: `CVE.org - CNA (${cnaName})`, vector: m.cvssV3_1.vectorString
+      });
+      if (m.cvssV4_0) metrics.push({
+        score: m.cvssV4_0.baseScore, version: "4.0",
+        source: `CVE.org - CNA (${cnaName})`, vector: m.cvssV4_0.vectorString
+      });
+    });
+
+    let nvdJson = null;
+    if (nvdRes.ok) {
+      nvdJson = await nvdRes.json();
+      const nvdCve = nvdJson.vulnerabilities?.[0]?.cve;
+      if (nvdCve?.metrics) {
+        ["cvssMetricV31","cvssMetricV40"].forEach(key => {
+          (nvdCve.metrics[key] || []).forEach(m => {
+            const data = m.cvssData;
+            if (data) metrics.push({
+              score: data.baseScore,
+              version: key === "cvssMetricV31" ? "3.1" : "4.0",
+              source: "NVD - NIST",
+              vector: data.vectorString
+            });
+          });
+        });
+      }
+    }
+
+    const cvssHtml = metrics.map(m => {
+      const sev = (m.score < 4 ? "Low" : m.score < 7 ? "Medium" : m.score < 9 ? "High" : "Critical");
+      const cls = (m.score < 4 ? "low" : m.score < 7 ? "medium" : m.score < 9 ? "high" : "critical");
+      return `
+        <div class="item">
+          <div class="title">CVSS v${m.version} – ${m.score} <span class="chip ${cls}">${sev}</span></div>
+          <div class="meta">Source: ${m.source}<br>Vector: ${m.vector || "N/A"}</div>
+        </div>`;
+    }).join("") || '<div class="meta">No CVSS metrics available</div>';
+
+    const inVulncheck = __lastVulncheckRecent.includes(input);
+    const quickLinksHtml = [
+      linkRow(`https://nvd.nist.gov/vuln/detail/${input}`, "NVD Detail Page"),
+      linkRow(`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${input}`, "MITRE CVE Record"),
+      linkRow(`https://cveawg.mitre.org/api/cve/${input}`, "CVE Services JSON"),
+      linkRow(`https://web.archive.org/`, "Archive.org (Wayback Machine)")
+    ].join("<br>");
+
+    // Always show relevant searches
+    renderRelevantSearches(input);
+    if (String(ransomwareTag).toLowerCase() === 'known') renderRansomwareSearches(input);
+    const cweHtml = buildCweHtml(cveData, nvdJson);
+
+    // Context for AI Analysis
+    const referencesGrouped = Object.keys(grouped).map(host => ({
+      host,
+      links: grouped[host].map(r => ({ name: r.name || r.url, url: r.url }))
+    }));
+    const cvssForPrompt = metrics.map(m => ({ version: m.version, score: m.score, source: m.source, vector: m.vector }));
+    const cwesForPrompt = (cna?.problemTypes || [])
+      .flatMap(pt => (pt.descriptions || [])
+        .map(d => ({ id: d?.cweId || d?.id || 'Unknown', desc: d?.description || d?.value || '', assigner: cna?.providerMetadata?.shortName || 'CNA' })));
+    __lastAnalysisContext = {
+      input,
+      isCVE: true,
+      cnaName,
+      description: desc,
+      kevYes,
+      ransomwareTag,
+      epss: epssData ? { score: Number(epssData.epss), percentile: Number(epssData.percentile) } : null,
+      cvss: cvssForPrompt,
+      cwes: cwesForPrompt,
+      referencesGrouped
+    };
+
+    // Paint CVE panel (KEV badge now uses kevLabel)
+    const cveContent = document.getElementById("cveContent");
+    cveContent.innerHTML = `
+      <div class="item"><div class="title">${input} · CNA: ${cnaName}</div></div>
+      <div class="item"><div class="title">Published: ${published}</div></div>
+      <div class="item"><div class="title">Description</div><div class="meta">${desc}</div></div>
+      <div class="item">
+        <div class="title">Exploitation Signals</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+          <div class="badge ${kevYes ? 'yes' : 'no'}">${kevLabel}</div>
+          ${kevYes
+            ? `<div class="badge ${String(ransomwareTag).toLowerCase()==='known' ? 'yes' : 'no'}">Ransomware: ${ransomwareTag}</div>`
+            : `<div class="badge no">Ransomware: Unknown</div>`}
+          ${inVulncheck ? '<div class="badge yes">VulnCheck Recent</div>' : ''}
+        </div>
+        <div class="metrics-row">
+          <div class="metrics-col">${epssInlineHtml}</div>
+          <div class="metrics-col">${ssvcInlineHtml}</div>
+        </div>
+      </div>
+      <div class="item"><div class="title">CWE Information</div><div class="meta">${cweHtml}</div></div>
+      <div class="item"><div class="title">CVSS Metrics</div><div class="meta">${cvssHtml}</div></div>
+      <div class="item"><div class="title">Quick Links</div><div class="meta">${quickLinksHtml}</div></div>
+    `;
+  } catch (err) {
+    document.getElementById("cveContent").innerHTML =
+      `<div class="meta">Error loading data: ${err.message}</div>`;
+    renderRelevantSearches(inputRaw);
+  } finally {
+    if (loadingEl) loadingEl.style.display = "none";
+  }
+}
     // EPSS block
     const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
     const epssDateStr = epssData?.date ? `(as of ${new Date(epssData.date).toLocaleString()})` : '';
@@ -1432,12 +1212,10 @@ const quickLinksHtml = [
   linkRow(`https://nvd.nist.gov/vuln/detail/${input}`, "NVD Detail Page"),
   linkRow(`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${input}`, "MITRE CVE Record"),
   linkRow(`https://cveawg.mitre.org/api/cve/${input}`, "CVE Services JSON"),
-  kevYes ? linkRow(cisaKevUrl(input), "CISA KEV Catalog (this CVE)") : '',
   linkRow(`https://web.archive.org/`, "Archive.org (Wayback Machine)")
 ].join("<br>");
     // Always show relevant searches
     renderRelevantSearches(input);
-    await renderRelevantSearches(input);
     if (String(ransomwareTag).toLowerCase()==='known') renderRansomwareSearches(input);
     const cweHtml = buildCweHtml(cveData, nvdJson);
     // Context for AI Analysis
@@ -1467,12 +1245,14 @@ const quickLinksHtml = [
       <div class="item"><div class="title">Published: ${published}</div></div>
       <div class="item"><div class="title">Description</div><div class="meta">${desc}</div></div>
       <div class="item">
-      <div class="title">Exploitation Signals</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-      <div class="badge ${kevYes ? 'yes' : 'no'}">CISA KEV: ${kevYes ? 'Yes' : 'No'}</div>
-        ${kevYes ? `<div class="badge ${String(ransomwareTag).toLowerCase()==='known' ? 'yes' : 'no'}">Ransomware: ${ransomwareTag}</div>` : `<div class="badge no">Ransomware: Unknown</div>`}
-        ${inVulncheck ? '<div class="badge yes">VulnCheck Recent</div>' : ''}
-      </div>
+        <div class="title">Exploitation Signals</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <div class="badge ${kevYes ? 'yes' : 'no'}">${kevLabel}</div>
+          ${kevYes
+          ? `<div class="badge ${String(ransomwareTag).toLowerCase()==='known' ? 'yes' : 'no'}">Ransomware: ${ransomwareTag}</div>`
+          : `<div class="badge no">Ransomware: Unknown</div>`}
+          ${inVulncheck ? '<div class="badge yes">VulnCheck Recent</div>' : ''}
+        </div>
         <div class="metrics-row">
           <div class="metrics-col">${epssInlineHtml}</div>
           <div class="metrics-col">${ssvcInlineHtml}</div>
@@ -1490,134 +1270,29 @@ const quickLinksHtml = [
   }
 }
 /* ---------- Exploitation Watch ---------- */
-async function fetchTextWithBetterFallback(url) {
-  const proxies = [
-    url => url,                               // direct first
-    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,  // new free proxy
-    url => `https://r.jina.ai/${url}`,        // drop http:// prefix if needed
-  ];
-
-  for (const proxy of proxies) {
-    try {
-      const target = proxy(url);
-      const res = await fetch(target, { mode: 'cors', cache: 'no-store' });
-      if (res.ok) return await res.text();
-    } catch (e) {
-      console.warn(`Proxy ${proxy.name || 'direct'} failed for ${url}:`, e);
-    }
-  }
-  throw new Error(`All proxies failed for ${url}`);
+async function fetchTextWithFallback(url) {
+  const tryFetch = async (u) => { const r = await fetch(u, { cache: 'no-store', mode: 'cors' }); if (!r.ok) throw new Error(`HTTP ${r.status}`); return await r.text(); };
+  const proxJina = (u) => 'https://r.jina.ai/http/' + u.replace(/^https?:\/\//, '');
+  const proxAor = (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u);
+  try { return await tryFetch(url); }
+  catch (e1) { try { return await tryFetch(proxJina(url)); } catch (e2) { try { return await tryFetch(proxAor(url)); } catch (e3) { throw e3; } } }
 }
 async function loadExploitationWatch() {
   const now = Date.now(); const tenDaysMs = 10*24*60*60*1000; let out=[];
   const sources = [
-  { name:"0patch Blog", url:"https://blog.0patch.com/feeds/posts/default" },
-  { name:"Anton on Security (Medium)", url:"https://medium.com/feed/anton-on-security" },
-  { name:"Ars Technica – Security", url:"https://arstechnica.com/tag/security/feed/" },
-  { name:"ASEC (AhnLab) Blog", url:"https://asec.ahnlab.com/en/feed/" },
-  { name:"AWS Security Blog", url:"https://aws.amazon.com/blogs/security/feed/" },
-  { name:"Bitdefender Labs", url:"https://www.bitdefender.com/nuxt/api/en-us/rss/labs/" },
-  { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
-  { name:"Broadcom/Symantec Enterprise Blogs", url:"https://sed-cms.broadcom.com/rss/v1/blogs/rss.xml" },
-  { name:"Center for Internet Security – Advisories", url:"https://www.cisecurity.org/feed/advisories" },
-  { name:"CERT/CC Vulnerability Notes", url:"https://www.cisa.gov/cybersecurity-advisories/cybersecurity-advisories.xml" },
-  { name:"Check Point Research", url:"https://research.checkpoint.com/feed/" },
-  { name:"CISA Cybersecurity Advisories (All)", url:"https://www.cisa.gov/sites/default/files/feeds/alerts.xml" },
-  { name:"CISA ICS Advisories", url:"https://www.cisa.gov/sites/default/files/feeds/ics-advisories.xml" },
-  { name:"CISA ICS Medical Advisories", url:"https://www.cisa.gov/sites/default/files/feeds/ics-medical-advisories.xml" },
-  { name:"Cisco Security Blog", url:"https://blogs.cisco.com/security/feed" },
-  { name:"Cisco Talos Intelligence", url:"https://blog.talosintelligence.com/rss/" },
-  { name:"Cloudflare Blog", url:"https://blog.cloudflare.com/rss/" },
-  { name:"CloudSec (Google Cloud) Threat Intelligence", url:"https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/" },
-  { name:"Cofense", url:"https://cofense.com/feed/" },
-  { name:"CrowdStrike Blog", url:"https://www.crowdstrike.com/en-us/blog/feed" },
-  { name:"Cyble", url:"https://cyble.com/feed/" },
-  { name:"Cybereason Blog", url:"https://www.cybereason.com/blog/rss.xml" },
-  { name:"Dark Reading", url:"https://www.darkreading.com/rss.xml" },
-  { name:"Darktrace Blog", url:"https://www.darktrace.com/blog/rss.xml" },
-  { name:"DFIR Report", url:"https://thedfirreport.com/feed/" },
-  { name:"DuskRise", url:"https://www.duskrise.com/feed/" },
-  { name:"EclecticIQ", url:"https://blog.eclecticiq.com/rss.xml" },
-  { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
-  { name:"Forescout", url:"https://www.forescout.com/feed/" },
-  { name:"Fox-IT Blog", url:"https://blog.fox-it.com/feed/" },
-  { name:"GBHackers", url:"https://gbhackers.com/feed/" },
-  { name:"Google Online Security Blog", url:"https://feeds.feedburner.com/GoogleOnlineSecurityBlog" },
-  { name:"Google TAG (Threat Analysis Group)", url:"https://blog.google/threat-analysis-group/rss/" },
-  { name:"Graham Cluley", url:"https://grahamcluley.com/feed/" },
-  { name:"Group-IB Blog", url:"https://www.group-ib.com/feed/blogfeed/" },
-  { name:"Hackmageddon", url:"https://www.hackmageddon.com/feed/" },
-  { name:"HackRead", url:"https://hackread.com/feed/" },
-  { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
-  { name:"HP Threat Research (HP Wolf Security)", url:"https://threatresearch.ext.hp.com/feed/" },
-  { name:"Infoblox – Threat Intelligence", url:"https://www.infoblox.com/blog/category/threat-intelligence/feed/" },
-  { name:"Infosecurity Magazine – News", url:"https://www.infosecurity-magazine.com/rss/news/" },
-  { name:"Intego Mac Security Blog", url:"https://www.intego.com/mac-security-blog/feed/" },
-  { name:"Intezer", url:"https://intezer.com/feed/" },
-  { name:"Juniper Threat Research", url:"https://blogs.juniper.net/threat-research/feed" },
-  { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
-  { name:"Lab52", url:"https://lab52.io/blog/feed/" },
-  { name:"LevelBlue – SpiderLabs Blog", url:"https://levelblue.com/blogs/spiderlabs-blog/rss.xml" },
-  { name:"Malware Traffic Analysis (canonical)", url:"https://www.malware-traffic-analysis.net/blog-entries.rss" },
-  { name:"Malwarebytes Labs", url:"https://www.malwarebytes.com/blog/feed/index.xml" },
-  { name:"McAfee – Advanced Threat Research", url:"https://www.mcafee.com/blogs/tag/advanced-threat-research/feed/" },
-  { name:"McAfee – Labs", url:"https://www.mcafee.com/blogs/other-blogs/mcafee-labs/feed/" },
-  { name:"McAfee – All Blogs", url:"https://www.mcafee.com/blogs/feed" },
-  { name:"Microsoft Security Blog", url:"https://www.microsoft.com/security/blog/feed/" },
-  { name:"Morphisec", url:"https://www.morphisec.com/feed/?post_type=blog" },
-  { name:"Moonlock", url:"https://moonlock.com/feed" },
-  { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
-  { name:"nao_sec (Research Team)", url:"https://nao-sec.org/feed" },
-  { name:"NIST – Cybersecurity Insights", url:"https://www.nist.gov/blogs/cybersecurity-insights/rss.xml" },
-  { name:"Palo Alto Networks – Main Blog", url:"https://www.paloaltonetworks.com/blog/feed/" },
-  { name:"Palo Alto Networks – Unit 42", url:"https://www.paloaltonetworks.com/blog/unit42/feed/" },
-  { name:"Permiso", url:"https://permiso.io/blog/rss.xml" },
-  { name:"PhishLabs", url:"https://www.phishlabs.com/feed" },
-  { name:"Project Zero", url:"https://projectzero.google/feed.xml" },
-  { name:"Proofpoint", url:"https://www.proofpoint.com/us/rss.xml" },
-  { name:"Qualys Blog", url:"https://blog.qualys.com/feed" },
-  { name:"Quarkslab", url:"https://blog.quarkslab.com/feeds/all.rss.xml" },
-  { name:"Quick Heal Blog", url:"https://www.quickheal.com/blogs/feed/" },
-  { name:"Rapid7 Blog", url:"https://www.rapid7.com/rss.xml" },
-  { name:"Recorded Future Blog", url:"https://www.recordedfuture.com/blog/rss" },
-  { name:"Reddit r/cybersecurity", url:"https://www.reddit.com/r/cybersecurity/.rss" },
-  { name:"Reddit r/netsec", url:"https://www.reddit.com/r/netsec/.rss" },
-  { name:"Rewterz", url:"https://rewterz.com/feed" },
-  { name:"Risky Business Podcast", url:"https://risky.biz/rss/podcast/" },
-  { name:"SANS Internet Storm Center (ISC Diary)", url:"https://isc.sans.edu/rssfeed_full.xml" },
-  { name:"Schneier on Security (Cybersecurity tag)", url:"https://www.schneier.com/tag/cybersecurity/feed/" },
-  { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
-  { name:"Security Affairs", url:"https://securityaffairs.com/feed" },
-  { name:"Security Joes", url:"https://www.securityjoes.com/blog-feed.xml" },
-  { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
-  { name:"SensePost", url:"https://sensepost.com/rss.xml" },
-  { name:"SentinelOne Labs", url:"https://www.sentinelone.com/labs/feed/" },
-  { name:"Silent Push", url:"https://www.silentpush.com/feed/" },
-  { name:"SOC Prime", url:"https://socprime.com/blog/feed/" },
-  { name:"SOCRadar", url:"https://socradar.io/feed/" },
-  { name:"The Guardian – Data & Computer Security", url:"https://www.theguardian.com/technology/data-computer-security/rss" },
-  { name:"The Hacker News", url:"https://feeds.feedburner.com/TheHackersNews" },
-  { name:"The Register – Security Headlines", url:"https://www.theregister.com/security/headlines.rss" },
-  { name:"Therecord.media", url:"https://therecord.media/feed" },
-  { name:"ThreatMon", url:"https://threatmon.io/feed/" },
-  { name:"Trend Micro (Simply Security)", url:"http://feeds.trendmicro.com/TrendMicroSimplySecurity" },
-  { name:"Tripwire", url:"https://www.tripwire.com/blogs.xml" },
-  { name:"Troy Hunt Blog", url:"https://www.troyhunt.com/rss/" },
-  { name:"Unit 42 (legacy v2 feed)", url:"https://unit42.paloaltonetworks.com/feed/?v=2" },
-  { name:"UpGuard – Breaches", url:"https://www.upguard.com/breaches/rss.xml" },
-  { name:"UpGuard – News", url:"https://www.upguard.com/news/rss.xml" },
-  { name:"Virus Bulletin", url:"https://www.virusbulletin.com/rss" },
-  { name:"VirusTotal Blog", url:"https://blog.virustotal.com/feeds/posts/default" },
-  { name:"Volexity", url:"https://www.volexity.com/feed/" },
-  { name:"Webroot Blog", url:"https://www.webroot.com/blog/feed/" },
-  { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
-  { name:"WeLiveSecurity (ESET – English site feed)", url:"https://www.welivesecurity.com/en/rss/feed/" },
-  { name:"WIRED – Security", url:"https://www.wired.com/feed/category/security/latest/rss" },
-  { name:"Wiz – Cloud Threat Landscape", url:"https://www.wiz.io/api/feed/cloud-threat-landscape/rss.xml" },
-  { name:"ZDNet – News", url:"https://www.zdnet.com/news/rss.xml" },
-  { name:"Zero Day Initiative – Published", url:"https://www.zerodayinitiative.com/rss/published/" },
-  { name:"Zscaler – Security Research", url:"https://www.zscaler.com/blogs/feeds/security-research" }
+    { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
+    { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
+    { name:"SANS Internet Storm Center", url:"https://isc.sans.edu/rssfeed_full.xml" },
+    { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
+    { name:"Dark Reading", url:"https://www.darkreading.com/rss.xml" },
+    { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
+    { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
+    { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
+    { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
+    { name:"Zero Day Initiative", url:"https://www.zerodayinitiative.com/rss/published/" },
+    { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
+    { name:"Unit42 (Palo Alto)", url:"https://unit42.paloaltonetworks.com/feed/" },
+    { name:"Security Boulevard", url:"https://securityboulevard.com/feed" }
   ];
   const exploitationCue =(text)=>/\b(exploit(?:ed|ing)?|weaponiz(?:ed|ation)|PoC|proof[-\s]of[-\s]concept|RCE|in the wild|actively targeted|advisory|zero[-\s]?day)\b/i.test(text||"");
   const hasCve =(text)=>/\bCVE-\d{4}-\d{4,}\b/i.test(text||"");
@@ -1658,97 +1333,18 @@ async function loadExploitationWatch() {
 function renderPrevalenceSignals(keyword){ document.getElementById("prevBody").innerHTML = `<div class="meta">Prevalence view not enabled in this build.</div>`; }
 function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence – ${keyword}`; renderPrevalenceSignals(keyword); }
 /* ---------- Relevant Searches ---------- */
-
-async function renderRelevantSearches(term) {
-  const container = document.getElementById("searchLinks");
-  if (!container) return;
-
-  const q = encodeURIComponent(term);
-  const isCve = /^CVE-\d{4}-\d{4,}$/i.test(term);
-
-  // Progress message while we probe sources
-  container.innerHTML = '<div class="meta">Checking relevant sources…</div>';
-
-  // Per-site detectors: return true when page looks like it has results
-  const SOURCES = [
-    {
-      label: "Exploit-DB Search",
-      url: `https://www.exploit-db.com/search?q=${q}`,
-      test: (html) =>
-        /\/exploits\/\d+/.test(html) && !/No results|did not match any results/i.test(html)
-    },
-    {
-      label: "PacketStorm Search",
-      url: `https://packetstorm.news/files/cve/?q=${q}`,
-      test: (html) =>
-        /\/files\/\d+\//.test(html) && !/No files matched/i.test(html)
-    },
-    {
-      label: "GitHub Code Search (PoCs)",
-      url: `https://github.com/search?q=${q}&type=code`,
-      test: (html) =>
-        /data-total-count="(\d+)"/i.test(html) ||
-        (!/We couldn’t find any code/i.test(html) && /aria-label="Code"/i.test(html))
-    },
-    ...(isCve
-      ? [{
-          label: "CrowdSec CTI Explorer",
-          url: `https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`,
-          test: (html) => /CVE-\d{4}-\d{4,}/i.test(html)
-        }]
-      : []),
-    // X/Twitter search requires login; include as convenience link only
-    { label: "X (Twitter) Latest", url: `https://x.com/search?q=${q}&f=live`, skipFetch: true },
-    {
-      label: "BleepingComputer",
-      url: `https://www.bleepingcomputer.com/search/?q=${q}`,
-      test: (html) => /class=["']?search-result/i.test(html) && !/No results/i.test(html)
-    },
-    {
-      label: "The Hacker News",
-      url: `https://thehackernews.com/search?q=${q}`,
-      test: (html) => /<article|class=["']post-title/i.test(html)
-    }
-  ];
-
-  // Defensive timeout so a single slow site doesn’t stall the panel
-  const timeout = (ms, promise) =>
-    Promise.race([
-      promise,
-      new Promise((resolve) => setTimeout(() => resolve(null), ms))
-    ]); // ← CLOSES ] and )
-
-  async function probeSource(src) {
-    if (src.skipFetch) return { src, ok: false }; // don't use as signal
-    try {
-      // Uses your resilient fetch helper already in the file
-      const html = await timeout(6000, fetchTextWithBetterFallback(src.url));
-      const ok = !!html && typeof src.test === "function" && src.test(html);
-      return { src, ok };
-    } catch {
-      return { src, ok: false };
-    }
-  }
-
-  // Run probes in parallel (VALID: inside async function)
-  const probes = await Promise.all(SOURCES.map(probeSource)); // ← NEED await
-  const matched = probes.filter((p) => p.ok);
-
-  if (!matched.length) {
-    container.innerHTML = `<div class="meta">No matching hits were found on common sources for “${term}”.</div>`;
-    return;
-  }
-
-  // Render only matched sources; add X (Twitter) link as convenience
-  const rows = matched.map(({ src }) => linkRow(src.url, src.label));
-  const twitter = SOURCES.find((s) => s.skipFetch);
-  if (twitter) rows.push(linkRow(twitter.url, twitter.label));
-
-  container.innerHTML = `
-    <div class="item">
-      <div class="title">Relevant Searches</div>
-      <div class="meta">${rows.join("<br>")}</div>
-    </div>`;
+function renderRelevantSearches(term){
+  const q = encodeURIComponent(term); const isCve = /^CVE-\d{4}-\d{4,}$/i.test(term);
+  const links = [
+    linkRow(`https://www.exploit-db.com/search?q=${q}`, "Exploit-DB Search"),
+    linkRow(`https://packetstorm.news/files/cve/?q=${q}`, "PacketStorm Search"),
+    linkRow(`https://github.com/search?q=${q}&type=code`, "GitHub Code Search (PoCs)"),
+    isCve ? linkRow(`https://app.crowdsec.net/cti/cve-explorer/${term.toLowerCase()}`, "CrowdSec CTI Explorer") : '',
+    linkRow(`https://x.com/search?q=${q}&f=live`, "X (Twitter) Latest"),
+    linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer"),
+    linkRow(`https://thehackernews.com/search?q=${q}`, "The Hacker News")
+  ].join("");
+  document.getElementById("searchLinks").innerHTML = `<div class="item"><div class="title">Relevant Searches</div><div class="meta">${links}</div></div>`;
 }
 function renderRansomwareSearches(cveId){
   const q = encodeURIComponent(cveId + " ransomware");
@@ -1757,784 +1353,293 @@ function renderRansomwareSearches(cveId){
     linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer — CVE + Ransomware"),
     linkRow(`https://www.google.com/search?q=${q}`, "Google — CVE + Ransomware"),
     linkRow(`https://news.google.com/search?q=${q}`, "Google News — CVE + Ransomware")
-  ].join("<br>");
+  ].join("");
   const container = document.getElementById("searchLinks");
   container.insertAdjacentHTML('beforeend', `<div class="item"><div class="title">Ransomware-Focused Searches</div><div class="meta">${rows}</div></div>`);
 }
+
+function isTab2Active() {
+  return document.getElementById('tab2')?.classList.contains('active');
+}
+
+async function maybeRefreshFeeds() {
+  if (isTab2Active()) {
+    await displayFeeds();
+  }
+}
+  
 /* ---------- Dashboard 2 Feeds ---------- */
 const feeds = [
-  { name:"0patch Blog", url:"https://blog.0patch.com/feeds/posts/default" },
-  { name:"Anton on Security (Medium)", url:"https://medium.com/feed/anton-on-security" },
-  { name:"Ars Technica – Security", url:"https://arstechnica.com/tag/security/feed/" },
-  { name:"ASEC (AhnLab) Blog", url:"https://asec.ahnlab.com/en/feed/" },
-  { name:"AWS Security Blog", url:"https://aws.amazon.com/blogs/security/feed/" },
-  { name:"Bitdefender Labs", url:"https://www.bitdefender.com/nuxt/api/en-us/rss/labs/" },
-  { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
-  { name:"Broadcom/Symantec Enterprise Blogs", url:"https://sed-cms.broadcom.com/rss/v1/blogs/rss.xml" },
-  { name:"Center for Internet Security – Advisories", url:"https://www.cisecurity.org/feed/advisories" },
-  { name:"CERT/CC Vulnerability Notes", url:"https://www.cisa.gov/cybersecurity-advisories/cybersecurity-advisories.xml" },
-  { name:"Check Point Research", url:"https://research.checkpoint.com/feed/" },
-  { name:"CISA Cybersecurity Advisories (All)", url:"https://www.cisa.gov/sites/default/files/feeds/alerts.xml" },
-  { name:"CISA ICS Advisories", url:"https://www.cisa.gov/sites/default/files/feeds/ics-advisories.xml" },
-  { name:"CISA ICS Medical Advisories", url:"https://www.cisa.gov/sites/default/files/feeds/ics-medical-advisories.xml" },
-  { name:"Cisco Security Blog", url:"https://blogs.cisco.com/security/feed" },
-  { name:"Cisco Talos Intelligence", url:"https://blog.talosintelligence.com/rss/" },
-  { name:"Cloudflare Blog", url:"https://blog.cloudflare.com/rss/" },
-  { name:"CloudSec (Google Cloud) Threat Intelligence", url:"https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/" },
-  { name:"Cofense", url:"https://cofense.com/feed/" },
-  { name:"CrowdStrike Blog", url:"https://www.crowdstrike.com/en-us/blog/feed" },
-  { name:"Cyble", url:"https://cyble.com/feed/" },
-  { name:"Cybereason Blog", url:"https://www.cybereason.com/blog/rss.xml" },
-  { name:"Dark Reading", url:"https://www.darkreading.com/rss.xml" },
-  { name:"Darktrace Blog", url:"https://www.darktrace.com/blog/rss.xml" },
-  { name:"DFIR Report", url:"https://thedfirreport.com/feed/" },
-  { name:"DuskRise", url:"https://www.duskrise.com/feed/" },
-  { name:"EclecticIQ", url:"https://blog.eclecticiq.com/rss.xml" },
-  { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
-  { name:"Forescout", url:"https://www.forescout.com/feed/" },
-  { name:"Fox-IT Blog", url:"https://blog.fox-it.com/feed/" },
-  { name:"GBHackers", url:"https://gbhackers.com/feed/" },
-  { name:"Google Online Security Blog", url:"https://feeds.feedburner.com/GoogleOnlineSecurityBlog" },
-  { name:"Google TAG (Threat Analysis Group)", url:"https://blog.google/threat-analysis-group/rss/" },
-  { name:"Graham Cluley", url:"https://grahamcluley.com/feed/" },
-  { name:"Group-IB Blog", url:"https://www.group-ib.com/feed/blogfeed/" },
-  { name:"Hackmageddon", url:"https://www.hackmageddon.com/feed/" },
-  { name:"HackRead", url:"https://hackread.com/feed/" },
-  { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
-  { name:"HP Threat Research (HP Wolf Security)", url:"https://threatresearch.ext.hp.com/feed/" },
-  { name:"Infoblox – Threat Intelligence", url:"https://www.infoblox.com/blog/category/threat-intelligence/feed/" },
-  { name:"Infosecurity Magazine – News", url:"https://www.infosecurity-magazine.com/rss/news/" },
-  { name:"Intego Mac Security Blog", url:"https://www.intego.com/mac-security-blog/feed/" },
-  { name:"Intezer", url:"https://intezer.com/feed/" },
-  { name:"Juniper Threat Research", url:"https://blogs.juniper.net/threat-research/feed" },
-  { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
-  { name:"Lab52", url:"https://lab52.io/blog/feed/" },
-  { name:"LevelBlue – SpiderLabs Blog", url:"https://levelblue.com/blogs/spiderlabs-blog/rss.xml" },
-  { name:"Malware Traffic Analysis (canonical)", url:"https://www.malware-traffic-analysis.net/blog-entries.rss" },
-  { name:"Malwarebytes Labs", url:"https://www.malwarebytes.com/blog/feed/index.xml" },
-  { name:"McAfee – Advanced Threat Research", url:"https://www.mcafee.com/blogs/tag/advanced-threat-research/feed/" },
-  { name:"McAfee – Labs", url:"https://www.mcafee.com/blogs/other-blogs/mcafee-labs/feed/" },
-  { name:"McAfee – All Blogs", url:"https://www.mcafee.com/blogs/feed" },
-  { name:"Microsoft Security Blog", url:"https://www.microsoft.com/security/blog/feed/" },
-  { name:"Morphisec", url:"https://www.morphisec.com/feed/?post_type=blog" },
-  { name:"Moonlock", url:"https://moonlock.com/feed" },
-  { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
-  { name:"nao_sec (Research Team)", url:"https://nao-sec.org/feed" },
-  { name:"NIST – Cybersecurity Insights", url:"https://www.nist.gov/blogs/cybersecurity-insights/rss.xml" },
-  { name:"Palo Alto Networks – Main Blog", url:"https://www.paloaltonetworks.com/blog/feed/" },
-  { name:"Palo Alto Networks – Unit 42", url:"https://www.paloaltonetworks.com/blog/unit42/feed/" },
-  { name:"Permiso", url:"https://permiso.io/blog/rss.xml" },
-  { name:"PhishLabs", url:"https://www.phishlabs.com/feed" },
-  { name:"Project Zero", url:"https://projectzero.google/feed.xml" },
-  { name:"Proofpoint", url:"https://www.proofpoint.com/us/rss.xml" },
-  { name:"Qualys Blog", url:"https://blog.qualys.com/feed" },
-  { name:"Quarkslab", url:"https://blog.quarkslab.com/feeds/all.rss.xml" },
-  { name:"Quick Heal Blog", url:"https://www.quickheal.com/blogs/feed/" },
-  { name:"Rapid7 Blog", url:"https://www.rapid7.com/rss.xml" },
-  { name:"Recorded Future Blog", url:"https://www.recordedfuture.com/blog/rss" },
-  { name:"Reddit r/cybersecurity", url:"https://www.reddit.com/r/cybersecurity/.rss" },
-  { name:"Reddit r/netsec", url:"https://www.reddit.com/r/netsec/.rss" },
-  { name:"Rewterz", url:"https://rewterz.com/feed" },
-  { name:"Risky Business Podcast", url:"https://risky.biz/rss/podcast/" },
-  { name:"SANS Internet Storm Center (ISC Diary)", url:"https://isc.sans.edu/rssfeed_full.xml" },
-  { name:"Schneier on Security (Cybersecurity tag)", url:"https://www.schneier.com/tag/cybersecurity/feed/" },
-  { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
-  { name:"Security Affairs", url:"https://securityaffairs.com/feed" },
-  { name:"Security Joes", url:"https://www.securityjoes.com/blog-feed.xml" },
   { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
-  { name:"SensePost", url:"https://sensepost.com/rss.xml" },
-  { name:"SentinelOne Labs", url:"https://www.sentinelone.com/labs/feed/" },
-  { name:"Silent Push", url:"https://www.silentpush.com/feed/" },
-  { name:"SOC Prime", url:"https://socprime.com/blog/feed/" },
-  { name:"SOCRadar", url:"https://socradar.io/feed/" },
-  { name:"The Guardian – Data & Computer Security", url:"https://www.theguardian.com/technology/data-computer-security/rss" },
-  { name:"The Hacker News", url:"https://feeds.feedburner.com/TheHackersNews" },
-  { name:"The Register – Security Headlines", url:"https://www.theregister.com/security/headlines.rss" },
-  { name:"Therecord.media", url:"https://therecord.media/feed" },
-  { name:"ThreatMon", url:"https://threatmon.io/feed/" },
-  { name:"Trend Micro (Simply Security)", url:"http://feeds.trendmicro.com/TrendMicroSimplySecurity" },
-  { name:"Tripwire", url:"https://www.tripwire.com/blogs.xml" },
-  { name:"Troy Hunt Blog", url:"https://www.troyhunt.com/rss/" },
-  { name:"Unit 42 (legacy v2 feed)", url:"https://unit42.paloaltonetworks.com/feed/?v=2" },
-  { name:"UpGuard – Breaches", url:"https://www.upguard.com/breaches/rss.xml" },
-  { name:"UpGuard – News", url:"https://www.upguard.com/news/rss.xml" },
-  { name:"Virus Bulletin", url:"https://www.virusbulletin.com/rss" },
-  { name:"VirusTotal Blog", url:"https://blog.virustotal.com/feeds/posts/default" },
-  { name:"Volexity", url:"https://www.volexity.com/feed/" },
-  { name:"Webroot Blog", url:"https://www.webroot.com/blog/feed/" },
+  { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
+  { name:"SANS ISC Diary", url:"https://isc.sans.edu/rssfeed_full.xml" },
+  { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
+  { name:"Dark Reading", url:"https://darkreading.com/rss.xml" },
+  { name:"Threatpost", url:"https://threatpost.com/feed/" },
+  { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
+  { name:"AWS Security Blog", url:"https://aws.amazon.com/blogs/security/feed/" },
+  { name:"Check Point Research", url:"https://research.checkpoint.com/feed/" },
+  { name:"Graham Cluley", url:"https://grahamcluley.com/feed/" },
+  { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
+  { name:"Juniper Threat Research", url:"https://blogs.juniper.net/threat-research/feed" },
+  { name:"Malware Traffic Analysis", url:"https://www.malware-traffic-analysis.net/blog-entries.rss" },
+  { name:"McAfee Advanced Threat Research", url:"https://www.mcafee.com/blogs/tag/advanced-threat-research/feed/" },
+  { name:"Microsoft Security Blog", url:"https://www.microsoft.com/security/blog/feed/" },
+  { name:"NVD CVE Feed (NIST)", url:"https://nvd.nist.gov/feeds/xml/cve/misc/nvd-rss.xml" },
+  { name:"SANS Internet Storm Center", url:"https://isc.sans.edu/rssfeed_full.xml" },
+  { name:"Schneier on Security", url:"https://www.schneier.com/tag/cybersecurity/feed/" },
+  { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
+  { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
+  { name:"Threatpost", url:"https://threatpost.com/feed/" },
   { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
-  { name:"WeLiveSecurity (ESET – English site feed)", url:"https://www.welivesecurity.com/en/rss/feed/" },
-  { name:"WIRED – Security", url:"https://www.wired.com/feed/category/security/latest/rss" },
-  { name:"Wiz – Cloud Threat Landscape", url:"https://www.wiz.io/api/feed/cloud-threat-landscape/rss.xml" },
-  { name:"ZDNet – News", url:"https://www.zdnet.com/news/rss.xml" },
-  { name:"Zero Day Initiative – Published", url:"https://www.zerodayinitiative.com/rss/published/" },
-  { name:"Zscaler – Security Research", url:"https://www.zscaler.com/blogs/feeds/security-research" }
+  { name:"Zero Day Initiative", url:"https://www.zerodayinitiative.com/rss/published/" }
 ];
-
 async function fetchFeed(feedUrl) {
-  try {
-    const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`);
-    if (!response.ok) {
-      console.warn(`rss2json ${feedUrl} HTTP ${response.status}`);
-      return [];
-    }
-    const data = await response.json();
-    return Array.isArray(data.items) ? data.items.slice(0, 5) : [];
-  } catch (error) {
-    console.error(`rss2json error: ${feedUrl}`, error);
-    return [];
-  }
+  try { const response = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`); const data = await response.json(); return Array.isArray(data.items) ? data.items.slice(0, 5) : []; }
+  catch (error) { console.error(`Error fetching feed: ${feedUrl}`, error); return []; }
 }
-
 async function displayFeeds() {
-  const container = document.getElementById("feed-container");
-  if (!container) return;
-  container.innerHTML = "";
-
+  const container = document.getElementById("feed-container"); container.innerHTML = "";
   for (const feed of feeds) {
     const articles = await fetchFeed(feed.url);
-    if (!articles.length) continue;
-
-    const feedDiv = document.createElement("div");
-    feedDiv.className = "feed";
-    const listHtml = articles.map(article => `<li>${linkRow(article.link, article.title)}</li>`).join("");
-    feedDiv.innerHTML = `<h2>${feed.name}</h2><ul>${listHtml}</ul>`;
-    container.appendChild(feedDiv);
+    if (articles.length > 0) {
+      const feedDiv = document.createElement("div"); feedDiv.className = "feed";
+      const listHtml = articles.map(article => `<li>${linkRow(article.link, article.title)}</li>`).join("");
+      feedDiv.innerHTML = `<h2>${feed.name}</h2><ul>${listHtml}</ul>`;
+      container.appendChild(feedDiv);
+    }
   }
 }
-setInterval(displayFeeds, 10 * 60 * 1000);
+// Helper to test CVE format
+function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
 // Main CVE search flow
 /* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
-;(async () => {
-  // Create the button before we branch to file origin (ensures 'btn' exists)
-  const btn = document.createElement('button');
-  btn.id = 'watcherBtn';
-  btn.className = 'btn';
-  btn.textContent = 'CVE Watcher';
-
-  // If opened via file:// keep only the button injection and return
+;(() => {
   if (IS_FILE_ORIGIN) {
-    function ensureWatcherButton() {
+    function ensureWatcherButton(){
       let hdr = document.querySelector('header.cve-header');
-      if (!hdr) {
-        btn.style.position = 'fixed';
-        btn.style.top = '60px';
-        btn.style.right = '12px';
-        btn.style.zIndex = '1500';
-        document.body.appendChild(btn);
-      } else {
-        hdr.appendChild(btn);
-      }
+      if (!hdr){ btn.style.position = 'fixed'; btn.style.top = '60px'; btn.style.right = '12px'; btn.style.zIndex = '1500'; document.body.appendChild(btn); }
+      else { hdr.appendChild(btn); }
     }
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', ensureWatcherButton);
-    } else {
-      ensureWatcherButton();
-    }
+    if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', ensureWatcherButton); } else { ensureWatcherButton(); }
     return;
   }
-
   const STORAGE_KEY = 'cveWatcher.list';
   const INTERVAL_KEY = 'cveWatcher.interval';
   const NOTIFIED_KEY = 'cveWatcher.notified';
-
   const PAGE_SCAN_CAP = 8;
-
   const KEV_SET_KEY = 'cveWatcher.kevSet';
   const KEV_MAP_KEY = 'cveWatcher.kevMap';
   const KEV_FETCH_KEY = 'cveWatcher.kevFetchedAt';
   const KEV_REFRESH_MINUTES = 60;
-
   const notified = new Set();
-  function loadNotified() {
-    try {
-      const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]');
-      if (Array.isArray(arr)) arr.forEach(k => notified.add(k));
-    } catch {}
-  }
-  function persistNotified() {
-    try {
-      localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(notified)));
-    } catch {}
-  }
+  function loadNotified(){ try { const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); if (Array.isArray(arr)) arr.forEach(k => notified.add(k)); } catch {} }
+  function persistNotified(){ try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(notified))); } catch {} }
   loadNotified();
-
-  let kevSet = null;
-  let kevMap = null;
-
-  // ✅ Option B: Reuse the earlier-defined KEV loader (uses KEV_JSON_URLS and its own fallback)
-  await loadKEV();
-
-  function minutesSince(ts) {
-    if (!ts) return Infinity;
-    const then = new Date(ts).getTime();
-    if (Number.isNaN(then)) return Infinity;
-    return (Date.now() - then) / (60 * 1000);
+  let kevSet = null; let kevMap = null;
+  function loadKev(){
+    try { const arr = JSON.parse(localStorage.getItem(KEV_SET_KEY) || '[]'); kevSet = new Set(arr.map(s => s.toUpperCase())); } catch { kevSet = new Set(); }
+    try { kevMap = JSON.parse(localStorage.getItem(KEV_MAP_KEY) || '{}') || {}; } catch { kevMap = {}; }
   }
-  function shouldRefreshKev() {
-    const last = localStorage.getItem(KEV_FETCH_KEY);
-    return minutesSince(last) >= KEV_REFRESH_MINUTES || !kevSet || kevSet.size === 0;
-  }
-
-  // Local KEV refresher: builds kevSet/kevMap used by the watcher for badges & info
-  async function refreshKev() {
+  loadKev();
+  function minutesSince(ts){ if (!ts) return Infinity; const then = new Date(ts).getTime(); if (Number.isNaN(then)) return Infinity; return (Date.now() - then) / (60*1000); }
+  function shouldRefreshKev(){ const last = localStorage.getItem(KEV_FETCH_KEY); return minutesSince(last) >= KEV_REFRESH_MINUTES || !kevSet || kevSet.size === 0; }
+  async function refreshKev(){
     try {
       const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
       const text = await fetchTextWithFallback(kevUrl);
       const data = JSON.parse(text);
       const list = Array.isArray(data?.vulnerabilities) ? data.vulnerabilities : [];
-
-      const ids = [];
-      const map = {};
-
-      for (const v of list) {
-        const cve = String(v.cveID || v.cve_id || '')
-          .toUpperCase()
-          .replace(/[\u2010-\u2015\u2212]/g, '-'); // normalize various dash chars to '-'
+      const ids = []; const map = {};
+      for (const v of list){
+        const cve = String(v.cveID || v.cve_id || '').toUpperCase().replace(/[\u2010-\u2015\u2212]/g, '-');
         if (!cve) continue;
         ids.push(cve);
-        map[cve] = {
-          vendor: String(v.vendorProject || '').trim(),
-          product: String(v.product || '').trim(),
-          dateAdded: (v.dateAdded || v.date_added || '').slice(0, 10)
-        };
+        map[cve] = { vendor : String(v.vendorProject || '').trim(), product : String(v.product || '').trim(), dateAdded : (v.dateAdded || v.date_added || '').slice(0, 10) };
       }
-
-      kevSet = new Set(ids);
-      kevMap = map;
-
+      kevSet = new Set(ids); kevMap = map;
       localStorage.setItem(KEV_SET_KEY, JSON.stringify(ids));
       localStorage.setItem(KEV_MAP_KEY, JSON.stringify(map));
       localStorage.setItem(KEV_FETCH_KEY, new Date().toISOString());
-    } catch (e) {
-      if (!kevSet) kevSet = new Set();
-      if (!kevMap) kevMap = {};
-      console.warn('refreshKev failed:', e.message);
-    }
+    } catch (e){ if (!kevSet) kevSet = new Set(); if (!kevMap) kevMap = {}; }
   }
-
-  function isKev(cve) { return kevSet && kevSet.has(String(cve).toUpperCase()); }
-  function kevInfo(cve) { return kevMap && kevMap[String(cve).toUpperCase()] || null; }
-
-  // Insert the watcher button in the header
-  function ensureWatcherButton() {
+  function isKev(cve){ return kevSet && kevSet.has(cve.toUpperCase()); }
+  function kevInfo(cve){ return kevMap && kevMap[cve.toUpperCase()] || null; }
+  const btn = document.createElement('button'); btn.id='watcherBtn'; btn.className='btn'; btn.textContent='CVE Watcher';
+  function ensureWatcherButton(){
     let hdr = document.querySelector('header.cve-header');
-    if (!hdr) {
-      btn.style.position = 'fixed';
-      btn.style.top = '60px';
-      btn.style.right = '12px';
-      btn.style.zIndex = '1500';
-      document.body.appendChild(btn);
-    } else {
-      hdr.appendChild(btn);
-    }
+    if (!hdr){ btn.style.position = 'fixed'; btn.style.top = '60px'; btn.style.right = '12px'; btn.style.zIndex = '1500'; document.body.appendChild(btn); }
+    else { hdr.appendChild(btn); }
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureWatcherButton);
-  } else {
-    ensureWatcherButton();
-  }
-
-  // Overlay + controls
-  const overlay = document.createElement('div');
-  overlay.id = 'watcher';
-  Object.assign(overlay.style, {
-    display: 'none',
-    position: 'fixed',
-    top: '0', left: '0',
-    width: '100%', height: '100%',
-    background: 'rgba(0,0,0,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: '1300'
-  });
+  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', ensureWatcherButton); } else { ensureWatcherButton(); }
+  const overlay = document.createElement('div'); overlay.id='watcher';
+  Object.assign(overlay.style, { display:'none', position:'fixed', top:'0', left:'0', width:'100%', height:'100%', background:'rgba(0,0,0,0.7)', alignItems:'center', justifyContent:'center', zIndex:'1300' });
   overlay.innerHTML = `
-<div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="watcherTitle">
+    <div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="watcherTitle">
       <h2 id="watcherTitle">CVE Watcher</h2>
       <label>CVEs to watch (comma or newline separated)<br><textarea id="watcherList" rows="6" placeholder="CVE-2024-12345\nCVE-2023-99999"></textarea></label>
       <label>Poll interval (minutes, default 30)<br><input id="watcherInterval" type="number" min="5" value="30"></label>
-        <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+      <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
         <button id="watcherSave" class="btn">Save &amp; Start</button>
         <button id="watcherStop" class="btn">Stop</button>
         <button id="watcherCheck" class="btn">Check now</button>
         <button id="watcherReset" class="btn">Reset dedupe</button>
         <button id="watcherKev" class="btn">Refresh KEV</button>
         <button id="watcherClose" class="btn">Close</button>
-            <label>Sound Notifications: <input id="watcherSoundToggle" type="checkbox"></label>
       </div>
       <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
     </div>`;
   document.body.appendChild(overlay);
-
-  // Notification bubble
-  const notif = document.createElement('div');
-  notif.id = 'watcherNotify';
-  document.body.appendChild(notif);
-
-  function kevBadge(kev) {
-    if (!kev) return '';
-    return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`;
+  const notif = document.createElement('div'); notif.id = 'watcherNotify'; document.body.appendChild(notif);
+  function kevBadge(kev){ if (!kev) return ''; return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`; }
+  function showNotification(items){
+    const dark = document.body.classList.contains('dark');
+    notif.innerHTML = items.map(i => {
+      const kinfo = i.kev ? kevInfo(i.cve) : null;
+      const vendorProductCve = kinfo ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ') : i.cve;
+      const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
+      return `<div style="background:${dark?'#1e1e1e':'#fff'};color:inherit;border:1px solid ${dark?'var(--border-dark)':'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
+    }).join('');
+    notif.style.display='block';
+    setTimeout(()=>{ notif.style.display='none'; }, 15000);
   }
-
-
-// --- Sound toggles & rate limit ---
-let __watcherSoundLastTs = 0;
-// default to enabled unless user turned it off
-if (localStorage.getItem('watcherSoundEnabled') === null) {
-  localStorage.setItem('watcherSoundEnabled', 'true');
-}
-
-function queueWatcherSound(count) {
-  if (!count) return;
-
-  // respect user toggle
-  if (localStorage.getItem('watcherSoundEnabled') === 'false') return;
-
-  // rate-limit: avoid multiple beeps if many items arrive at once
-  const now = Date.now();
-  if (now - __watcherSoundLastTs < 5000) return; // 5 seconds min gap
-  __watcherSoundLastTs = now;
-
-  const audio = document.getElementById('watcherSound');
-  if (!audio) return;
-
-  // ensure volume sane
-  audio.volume = 0.7;
-  audio.currentTime = 0;
-  audio.play().catch(() => {
-    // Browser blocked autoplay. Ask for a one-time user gesture to unlock.
-    const unlock = () => {
-      audio.currentTime = 0;
-      audio.play().catch(() => {/* ignore */});
-    };
-    document.addEventListener('click', unlock, { once: true });
-    document.addEventListener('keydown', unlock, { once: true });
-  });
-}
-
-function showNotification(items) {
-  const dark = document.body.classList.contains('dark');
-  let html = items.map(i => {
-    const kinfo = i.kev ? kevInfo(i.cve) : null;
-    const vendorProductCve = kinfo
-      ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ')
-      : i.cve;
-    const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
-    return `<div style="background:${dark?'#1e1e1e':'#fff'};color:inherit;border:1px solid ${dark?'var(--border-dark)':'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
-  }).join('');
-  
-  // Optional: Add a close button at the bottom (comment out if you don't want it)
-  html += `<div style="text-align: center; margin-top: 16px;"><button class="btn" onclick="document.getElementById('watcherNotify').style.display='none'">Close</button></div>`;
-  
-  notif.innerHTML = html;
-  notif.style.display = 'block';
-  // 🔊 play a single beep for this batch of items
-  queueWatcherSound(items.length);
-  // Auto-hide after 15 seconds (adjust timeout as needed)
-  setTimeout(() => { notif.style.display = 'none'; }, 15000);
-}
-
-  function parseList(raw) {
-    return (raw || '')
-      .toUpperCase()
-      .split(/[\s,;]+/)
-      .map(s => s.trim())
-      .filter(s => /^CVE-\d{4}-\d{4,}$/.test(s));
-  }
-
-  function getSources() {
+  function parseList(raw){ return (raw||'').toUpperCase().split(/[\s,;]+/).map(s=>s.trim()).filter(s=>/^CVE-\d{4}-\d{4,}$/.test(s)); }
+  function getSources(){
     return [
-  { name:"0patch Blog", url:"https://blog.0patch.com/feeds/posts/default" },
-  { name:"Anton on Security (Medium)", url:"https://medium.com/feed/anton-on-security" },
-  { name:"Ars Technica – Security", url:"https://arstechnica.com/tag/security/feed/" },
-  { name:"ASEC (AhnLab) Blog", url:"https://asec.ahnlab.com/en/feed/" },
-  { name:"AWS Security Blog", url:"https://aws.amazon.com/blogs/security/feed/" },
-  { name:"Bitdefender Labs", url:"https://www.bitdefender.com/nuxt/api/en-us/rss/labs/" },
-  { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
-  { name:"Broadcom/Symantec Enterprise Blogs", url:"https://sed-cms.broadcom.com/rss/v1/blogs/rss.xml" },
-  { name:"Center for Internet Security – Advisories", url:"https://www.cisecurity.org/feed/advisories" },
-  { name:"CERT/CC Vulnerability Notes", url:"https://www.cisa.gov/cybersecurity-advisories/cybersecurity-advisories.xml" },
-  { name:"Check Point Research", url:"https://research.checkpoint.com/feed/" },
-  { name:"CISA Cybersecurity Advisories (All)", url:"https://www.cisa.gov/sites/default/files/feeds/alerts.xml" },
-  { name:"CISA ICS Advisories", url:"https://www.cisa.gov/sites/default/files/feeds/ics-advisories.xml" },
-  { name:"CISA ICS Medical Advisories", url:"https://www.cisa.gov/sites/default/files/feeds/ics-medical-advisories.xml" },
-  { name:"Cisco Security Blog", url:"https://blogs.cisco.com/security/feed" },
-  { name:"Cisco Talos Intelligence", url:"https://blog.talosintelligence.com/rss/" },
-  { name:"Cloudflare Blog", url:"https://blog.cloudflare.com/rss/" },
-  { name:"CloudSec (Google Cloud) Threat Intelligence", url:"https://cloudblog.withgoogle.com/topics/threat-intelligence/rss/" },
-  { name:"Cofense", url:"https://cofense.com/feed/" },
-  { name:"CrowdStrike Blog", url:"https://www.crowdstrike.com/en-us/blog/feed" },
-  { name:"Cyble", url:"https://cyble.com/feed/" },
-  { name:"Cybereason Blog", url:"https://www.cybereason.com/blog/rss.xml" },
-  { name:"Dark Reading", url:"https://www.darkreading.com/rss.xml" },
-  { name:"Darktrace Blog", url:"https://www.darktrace.com/blog/rss.xml" },
-  { name:"DFIR Report", url:"https://thedfirreport.com/feed/" },
-  { name:"DuskRise", url:"https://www.duskrise.com/feed/" },
-  { name:"EclecticIQ", url:"https://blog.eclecticiq.com/rss.xml" },
-  { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
-  { name:"Forescout", url:"https://www.forescout.com/feed/" },
-  { name:"Fox-IT Blog", url:"https://blog.fox-it.com/feed/" },
-  { name:"GBHackers", url:"https://gbhackers.com/feed/" },
-  { name:"Google Online Security Blog", url:"https://feeds.feedburner.com/GoogleOnlineSecurityBlog" },
-  { name:"Google TAG (Threat Analysis Group)", url:"https://blog.google/threat-analysis-group/rss/" },
-  { name:"Graham Cluley", url:"https://grahamcluley.com/feed/" },
-  { name:"Group-IB Blog", url:"https://www.group-ib.com/feed/blogfeed/" },
-  { name:"Hackmageddon", url:"https://www.hackmageddon.com/feed/" },
-  { name:"HackRead", url:"https://hackread.com/feed/" },
-  { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
-  { name:"HP Threat Research (HP Wolf Security)", url:"https://threatresearch.ext.hp.com/feed/" },
-  { name:"Infoblox – Threat Intelligence", url:"https://www.infoblox.com/blog/category/threat-intelligence/feed/" },
-  { name:"Infosecurity Magazine – News", url:"https://www.infosecurity-magazine.com/rss/news/" },
-  { name:"Intego Mac Security Blog", url:"https://www.intego.com/mac-security-blog/feed/" },
-  { name:"Intezer", url:"https://intezer.com/feed/" },
-  { name:"Juniper Threat Research", url:"https://blogs.juniper.net/threat-research/feed" },
-  { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
-  { name:"Lab52", url:"https://lab52.io/blog/feed/" },
-  { name:"LevelBlue – SpiderLabs Blog", url:"https://levelblue.com/blogs/spiderlabs-blog/rss.xml" },
-  { name:"Malware Traffic Analysis (canonical)", url:"https://www.malware-traffic-analysis.net/blog-entries.rss" },
-  { name:"Malwarebytes Labs", url:"https://www.malwarebytes.com/blog/feed/index.xml" },
-  { name:"McAfee – Advanced Threat Research", url:"https://www.mcafee.com/blogs/tag/advanced-threat-research/feed/" },
-  { name:"McAfee – Labs", url:"https://www.mcafee.com/blogs/other-blogs/mcafee-labs/feed/" },
-  { name:"McAfee – All Blogs", url:"https://www.mcafee.com/blogs/feed" },
-  { name:"Microsoft Security Blog", url:"https://www.microsoft.com/security/blog/feed/" },
-  { name:"Morphisec", url:"https://www.morphisec.com/feed/?post_type=blog" },
-  { name:"Moonlock", url:"https://moonlock.com/feed" },
-  { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
-  { name:"nao_sec (Research Team)", url:"https://nao-sec.org/feed" },
-  { name:"NIST – Cybersecurity Insights", url:"https://www.nist.gov/blogs/cybersecurity-insights/rss.xml" },
-  { name:"Palo Alto Networks – Main Blog", url:"https://www.paloaltonetworks.com/blog/feed/" },
-  { name:"Palo Alto Networks – Unit 42", url:"https://www.paloaltonetworks.com/blog/unit42/feed/" },
-  { name:"Permiso", url:"https://permiso.io/blog/rss.xml" },
-  { name:"PhishLabs", url:"https://www.phishlabs.com/feed" },
-  { name:"Project Zero", url:"https://projectzero.google/feed.xml" },
-  { name:"Proofpoint", url:"https://www.proofpoint.com/us/rss.xml" },
-  { name:"Qualys Blog", url:"https://blog.qualys.com/feed" },
-  { name:"Quarkslab", url:"https://blog.quarkslab.com/feeds/all.rss.xml" },
-  { name:"Quick Heal Blog", url:"https://www.quickheal.com/blogs/feed/" },
-  { name:"Rapid7 Blog", url:"https://www.rapid7.com/rss.xml" },
-  { name:"Recorded Future Blog", url:"https://www.recordedfuture.com/blog/rss" },
-  { name:"Reddit r/cybersecurity", url:"https://www.reddit.com/r/cybersecurity/.rss" },
-  { name:"Reddit r/netsec", url:"https://www.reddit.com/r/netsec/.rss" },
-  { name:"Rewterz", url:"https://rewterz.com/feed" },
-  { name:"Risky Business Podcast", url:"https://risky.biz/rss/podcast/" },
-  { name:"SANS Internet Storm Center (ISC Diary)", url:"https://isc.sans.edu/rssfeed_full.xml" },
-  { name:"Schneier on Security (Cybersecurity tag)", url:"https://www.schneier.com/tag/cybersecurity/feed/" },
-  { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
-  { name:"Security Affairs", url:"https://securityaffairs.com/feed" },
-  { name:"Security Joes", url:"https://www.securityjoes.com/blog-feed.xml" },
-  { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
-  { name:"SensePost", url:"https://sensepost.com/rss.xml" },
-  { name:"SentinelOne Labs", url:"https://www.sentinelone.com/labs/feed/" },
-  { name:"Silent Push", url:"https://www.silentpush.com/feed/" },
-  { name:"SOC Prime", url:"https://socprime.com/blog/feed/" },
-  { name:"SOCRadar", url:"https://socradar.io/feed/" },
-  { name:"The Guardian – Data & Computer Security", url:"https://www.theguardian.com/technology/data-computer-security/rss" },
-  { name:"The Hacker News", url:"https://feeds.feedburner.com/TheHackersNews" },
-  { name:"The Register – Security Headlines", url:"https://www.theregister.com/security/headlines.rss" },
-  { name:"Therecord.media", url:"https://therecord.media/feed" },
-  { name:"ThreatMon", url:"https://threatmon.io/feed/" },
-  { name:"Trend Micro (Simply Security)", url:"http://feeds.trendmicro.com/TrendMicroSimplySecurity" },
-  { name:"Tripwire", url:"https://www.tripwire.com/blogs.xml" },
-  { name:"Troy Hunt Blog", url:"https://www.troyhunt.com/rss/" },
-  { name:"Unit 42 (legacy v2 feed)", url:"https://unit42.paloaltonetworks.com/feed/?v=2" },
-  { name:"UpGuard – Breaches", url:"https://www.upguard.com/breaches/rss.xml" },
-  { name:"UpGuard – News", url:"https://www.upguard.com/news/rss.xml" },
-  { name:"Virus Bulletin", url:"https://www.virusbulletin.com/rss" },
-  { name:"VirusTotal Blog", url:"https://blog.virustotal.com/feeds/posts/default" },
-  { name:"Volexity", url:"https://www.volexity.com/feed/" },
-  { name:"Webroot Blog", url:"https://www.webroot.com/blog/feed/" },
-  { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
-  { name:"WeLiveSecurity (ESET – English site feed)", url:"https://www.welivesecurity.com/en/rss/feed/" },
-  { name:"WIRED – Security", url:"https://www.wired.com/feed/category/security/latest/rss" },
-  { name:"Wiz – Cloud Threat Landscape", url:"https://www.wiz.io/api/feed/cloud-threat-landscape/rss.xml" },
-  { name:"ZDNet – News", url:"https://www.zdnet.com/news/rss.xml" },
-  { name:"Zero Day Initiative – Published", url:"https://www.zerodayinitiative.com/rss/published/" },
-  { name:"Zscaler – Security Research", url:"https://www.zscaler.com/blogs/feeds/security-research" },
-  { name: "X (Twitter) — Live Search", url: "https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type: "x" }
+      { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
+      { name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/" },
+      { name:"SANS Internet Storm Center", url:"https://isc.sans.edu/rssfeed_full.xml" },
+      { name:"MSRC Security Update Guide", url:"https://api.msrc.microsoft.com/update-guide/rss" },
+      { name:"Dark Reading", url:"https://www.darkreading.com/rss.xml" },
+      { name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/" },
+      { name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/" },
+      { name:"Securelist (Kaspersky)", url:"https://securelist.com/feed/" },
+      { name:"WeLiveSecurity (ESET)", url:"https://www.welivesecurity.com/feed/" },
+      { name:"Zero Day Initiative", url:"https://www.zerodayinitiative.com/rss/published/" },
+      { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
+      { name:"Unit42 (Palo Alto)", url:"https://unit42.paloaltonetworks.com/feed/" },
+      { name:"Security Boulevard", url:"https://securityboulevard.com/feed" },
+      { name:"X (Twitter) — Live Search", url:"https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type:"x" }
     ];
   }
-
-  // CyCognito emerging threats (best-effort)
-  async function fetchCyCognitoThreats() {
-    const url = 'https://www.cycognito.com/emerging-threats/';
-    try {
-      const html = await fetchTextWithFallback(url);
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-
-      const threatSections = doc.querySelectorAll('h2, h3, h4');
-      const threats = [];
-
-      threatSections.forEach(h => {
-        const text = h.textContent.trim();
-        const cveMatch = text.match(/CVE-\d{4}-\d{4,}/i);
-        if (!cveMatch) return;
-
-        const cve = cveMatch[0].toUpperCase();
-
-        let published = 'Unknown';
-        let next = h.nextElementSibling;
-        while (next) {
-          const dateMatch = next.textContent.match(/Published:\s*(\d{2}\/\d{2}\/\d{4})/i);
-          if (dateMatch) {
-            published = dateMatch[1];
-            break;
-          }
-          next = next.nextElementSibling;
-        }
-
-        threats.push({
-          cve,
-          published,
-          title: text,
-          link: url + '#' + cve.toLowerCase().replace(/-/g, '')
-        });
-      });
-
-      return threats;
-    } catch (e) {
-      console.warn('CyCognito fetch failed:', e);
-      return [];
-    }
-  }
-
-  const CYC_STATE_KEY = 'cveWatcher.cyCognitoState';
   function norm(text) { return (text || '').replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-').toUpperCase(); }
-  function buildCveRegex(cve) {
-    const m = String(cve).match(/^CVE-(\d{4})-(\d{4,})$/i);
-    if (!m) return null;
-    const year = m[1], id = m[2];
-    return new RegExp(`CVE[\\s\\-]+${year}[\\s\\-]+${id}`, 'i');
-  }
-
-  async function pageMentionsCve(url, cveUpper) {
-    try {
-      const html = await fetchTextWithFallback(url);
-      const text = norm(new DOMParser().parseFromString(html, 'text/html').documentElement.textContent);
-      const regex = buildCveRegex(cveUpper);
-      return regex ? regex.test(text) : text.includes(norm(cveUpper));
-    } catch {
-      return false;
-    }
-  }
-
-  async function fetchMentionsForCve(cve) {
-    const sources = getSources();
-    const hits = [];
-
+  function buildCveRegex(cve) { const m = cve.match(/^CVE-(\d{4})-(\d{4,})$/i); if (!m) return null; const year = m[1], id = m[2]; return new RegExp(`CVE[\\s\\-]+${year}[\\s\\-]+${id}`, 'i'); }
+  async function pageMentionsCve(url, cveUpper){ try { const html = await fetchTextWithFallback(url); const text = norm(new DOMParser().parseFromString(html, 'text/html').documentElement.textContent); const regex = buildCveRegex(cveUpper); return regex ? regex.test(text) : text.includes(norm(cveUpper)); } catch { return false; } }
+  async function fetchMentionsForCve(cve){
+    const sources = getSources(); const hits = [];
     await Promise.all(sources.map(async s => {
       if (s.type === 'x') {
         const xLink = s.url.replace('{{CVE}}', encodeURIComponent(cve));
-        const key = `XSEARCH|${cve}`;
-        if (!notified.has(key)) {
-          notified.add(key);
-          hits.push({ cve, title: `X Live Search for ${cve}`, link: xLink, source: s.name, kev: isKev(cve) });
-        }
+        const key = `XSEARCH|${cve}`; if (!notified.has(key)) { notified.add(key); hits.push({ cve, title: `X Live Search for ${cve}`, link: xLink, source: s.name, kev: isKev(cve) }); }
         return;
       }
-
       try {
         const xml = await fetchTextWithFallback(s.url);
         const doc = new DOMParser().parseFromString(xml, 'application/xml');
         const items = Array.from(doc.querySelectorAll('item, entry')).slice(0, 60);
         const cveUpper = cve.toUpperCase();
-
         let pageScanBudget = PAGE_SCAN_CAP;
-
         const itemMentionsCve = (item, cveUpper) => {
           const pick = sel => item.querySelector(sel)?.textContent || '';
-          const title = pick('title');
-          const desc = pick('description') || pick('summary');
+          const title = pick('title'); const desc = pick('description') || pick('summary');
           const contentNSq = item.querySelector('content\\:encoded')?.textContent || '';
           const contentNSt = item.getElementsByTagName('content:encoded')?.[0]?.textContent || '';
-          const contentNS = contentNSq || contentNSt;
-          const content = contentNS || pick('content');
+          const contentNS = contentNSq || contentNSt; const content = contentNS || pick('content');
           const blob = norm(`${title} ${desc} ${content}`);
           const regex = buildCveRegex(cveUpper);
           const matched = regex ? regex.test(blob) : blob.includes(norm(cveUpper));
           return { matched, hasContentEncoded: !!contentNS };
         };
-
-        for (const it of items) {
+        for (const it of items){
           const title = it.querySelector('title')?.textContent || '';
           const linkNode = it.querySelector('link[href]');
           const rawLink = it.querySelector('link')?.textContent || linkNode?.getAttribute('href') || '#';
           const link = (rawLink || '#').trim();
-
           const { matched, hasContentEncoded } = itemMentionsCve(it, cveUpper);
           let finalMatch = matched;
-
           if (!finalMatch && link && link !== '#' && pageScanBudget > 0 && !hasContentEncoded) {
             finalMatch = await pageMentionsCve(link, cveUpper);
             pageScanBudget--;
           }
-
-          if (finalMatch) {
-            const key = `${cve}|${link}`;
-            if (!notified.has(key)) {
-              notified.add(key);
-              hits.push({ cve, title: title || link, link, source: s.name, kev: isKev(cve) });
-            }
+          if (finalMatch){
+            const key = `${cve}|${link}`; if (!notified.has(key)) { notified.add(key); hits.push({ cve, title: title || link, link, source: s.name, kev: isKev(cve) }); }
           }
         }
       } catch {}
     }));
-
     return hits;
   }
-
-  async function checkCyCognito() {
-    const threats = await fetchCyCognitoThreats();
-    if (!threats.length) return [];
-
-    let state = JSON.parse(localStorage.getItem(CYC_STATE_KEY) || '{}');
-    const lastThreats = state.lastThreats || [];
-    const lastCVEs = new Set(lastThreats.map(t => t.cve));
-
-    const newHits = threats.filter(t => !lastCVEs.has(t.cve));
-
-    state.lastThreats = threats.map(t => ({ cve: t.cve, published: t.published }));
-    state.lastCheck = Date.now();
-    localStorage.setItem(CYC_STATE_KEY, JSON.stringify(state));
-
-    return newHits.map(hit => ({
-      cve: hit.cve,
-      title: `CyCognito Emerging Threat: ${hit.title}`,
-      link: hit.link || 'https://www.cycognito.com/emerging-threats/',
-      source: 'CyCognito Emerging Threats',
-      kev: isKev(hit.cve)
-    }));
-  }
-
-  // Initial KEV refresh (local set/map) if needed
-  if (shouldRefreshKev()) {
-    await refreshKev();
-  }
-
-  let timer = null;
-
-  async function poll() {
-    if (shouldRefreshKev()) {
-      await refreshKev();
-    }
-
+  async function poll(){
+    if (shouldRefreshKev()) { await refreshKev(); }
     const list = parseList(localStorage.getItem(STORAGE_KEY));
+    if (!list.length) return;
     const allHits = [];
-
-    for (const cve of list) {
-      const hits = await fetchMentionsForCve(cve);
-      allHits.push(...hits);
-    }
-
-    const cyHits = await checkCyCognito();
-    allHits.push(...cyHits);
-
-    if (allHits.length) {
+    for (const cve of list){ const hits = await fetchMentionsForCve(cve); allHits.push(...hits); }
+    if (allHits.length){
       persistNotified();
-
       const wc = document.getElementById('watchContent');
-      if (wc) {
+      if (wc){
         const html = allHits.map(r => {
-          const titleText = `${r.cve ? r.cve + ': ' : ''}${r.title || r.link}`;
+          const titleText = `${r.cve}: ${r.title || r.link}`;
           const kinfo = r.kev ? kevInfo(r.cve) : null;
-          const vendorProdCve = kinfo
-            ? [kinfo.vendor, kinfo.product, r.cve].filter(Boolean).join(' · ')
-            : (r.cve || 'CyCognito Update');
+          const vendorProdCve = kinfo ? [kinfo.vendor, kinfo.product, r.cve].filter(Boolean).join(' · ') : r.cve;
           const metaLine = `${vendorProdCve}${r.source ? ' · ' + r.source : ''} · ${new Date().toLocaleString()}`;
           return `<div class="item"><div class="title">${linkRow(r.link, titleText)}${kevBadge(r.kev)}</div><div class="meta">${metaLine}</div></div>`;
         }).join('');
-
         wc.insertAdjacentHTML('afterbegin', html);
       }
-
-      showNotification(allHits.slice(0, 3));
+      showNotification(allHits.slice(0,3));
     }
   }
-
-  function start() {
-    const minutes = Math.max(5, Number(localStorage.getItem(INTERVAL_KEY) || 30));
-    if (timer) clearInterval(timer);
-    timer = setInterval(poll, minutes * 60 * 1000);
-    poll();
-  }
-
-  function stop() {
-    if (timer) { clearInterval(timer); timer = null; }
-  }
-
-  // UI wiring
-  btn.addEventListener('click', () => {
+  let timer = null;
+  function start(){ const minutes = Math.max(5, Number(localStorage.getItem(INTERVAL_KEY) || 30)); if (timer) clearInterval(timer); timer = setInterval(poll, minutes*60*1000); poll(); }
+  function stop(){ if (timer) { clearInterval(timer); timer=null; } }
+  btn.addEventListener('click', ()=>{
     document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
     document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
-    overlay.style.display = 'flex';
+    overlay.style.display='flex';
   });
-
-  overlay.addEventListener('click', (e) => { if (e.target.id === 'watcher') overlay.style.display = 'none'; });
-  overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display = 'none');
-
-  overlay.querySelector('#watcherSave').addEventListener('click', () => {
+  overlay.addEventListener('click', (e)=>{ if (e.target.id === 'watcher') overlay.style.display='none'; });
+  overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display='none');
+  overlay.querySelector('#watcherSave').addEventListener('click', ()=>{
     const list = parseList(document.getElementById('watcherList').value);
     localStorage.setItem(STORAGE_KEY, list.join('\n'));
-
-    const interval = Math.max(5, Number(document.getElementById('watcherInterval').value) || 30);
+    const interval = Math.max(5, Number(document.getElementById('watcherInterval').value)||30);
     localStorage.setItem(INTERVAL_KEY, String(interval));
-
-    overlay.style.display = 'none';
-    if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length !== 1 ? 's' : ''}; ${interval} min)`);
+    overlay.style.display='none';
+    if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length!==1?'s':''}; ${interval} min)`);
     start();
   });
-
-  overlay.querySelector('#watcherStop').addEventListener('click', () => {
-    stop();
-    overlay.style.display = 'none';
-    if (typeof toast === 'function') toast('CVE Watcher stopped');
-  });
-
-  overlay.querySelector('#watcherCheck').addEventListener('click', async () => {
-    if (typeof toast === 'function') toast('Checking now…');
-    await poll();
-    if (typeof toast === 'function') toast('Check complete');
-  });
-
-  overlay.querySelector('#watcherReset').addEventListener('click', () => {
-    notified.clear();
-    localStorage.removeItem(NOTIFIED_KEY);
-    if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check');
-  });
-
-  overlay.querySelector('#watcherKev').addEventListener('click', async () => {
-    if (typeof toast === 'function') toast('Refreshing KEV…');
-    await refreshKev();
-    if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`);
-  });
-
-  // Start automatically if there’s a saved list
-  if (parseList(localStorage.getItem(STORAGE_KEY)).length) {
-    start();
-  }
+  overlay.querySelector('#watcherStop').addEventListener('click', ()=>{ stop(); overlay.style.display='none'; if (typeof toast === 'function') toast('CVE Watcher stopped'); });
+  overlay.querySelector('#watcherCheck').addEventListener('click', async ()=>{ if (typeof toast === 'function') toast('Checking now…'); await poll(); if (typeof toast === 'function') toast('Check complete'); });
+  overlay.querySelector('#watcherReset').addEventListener('click', ()=>{ notified.clear(); localStorage.removeItem(NOTIFIED_KEY); if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check'); });
+  overlay.querySelector('#watcherKev').addEventListener('click', async ()=>{ if (typeof toast === 'function') toast('Refreshing KEV…'); await refreshKev(); if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`); });
+  if (parseList(localStorage.getItem(STORAGE_KEY)).length){ start(); }
 })();
 /* ---------- Tabs ---------- */
 function switchTab(tabIndex) {
   const tabs = [document.getElementById('tab1'), document.getElementById('tab2')];
   document.querySelectorAll('nav button').forEach((btn, i) => { btn.classList.toggle('active', i === tabIndex); });
   tabs.forEach((tab, i) => { tab.classList.toggle('active', i === tabIndex); });
+
+  // ✅ if switching to Tab 2, refresh feeds once
+  if (tabIndex === 1) {
+    maybeRefreshFeeds();
+  }
 }
 /* ---------- Search bindings ---------- */
 function handleSearch() {
-  const inputEl = document.getElementById('cve');
-  const v = (inputEl?.value || '').trim();
-  if (!v) {
-    toast('Please enter a CVE or vendor/product');
-    return;
-  }
-  const input = v.toUpperCase();
-  if (isCVE(input)) {
-    runSearch();
-  } else {
-    runVendorProductSearch(v);  // pass original case for keyword search
+  try {
+    const inputEl = document.getElementById('cve');
+    const v = (inputEl?.value || '').trim();
+    if (!v) { toast('Please enter a CVE or vendor/product'); return; }
+    isCVE(v) ? runSearch() : runVendorProductSearch(v);
+  } catch (e) {
+    console.error('handleSearch error:', e);
+    toast('Search failed — check console for details.');
   }
 }
-  function bindSearchHandlers() {
+function bindSearchHandlers() {
   try {
     const btn = document.getElementById('go'); const input = document.getElementById('cve');
     if (btn) { btn.onclick = null; btn.addEventListener('click', handleSearch); }
@@ -2595,103 +1700,39 @@ function clearCveFields() {
   }
 }
 
-// One DOMContentLoaded listener with everything
+// --- Bind the Clear button on DOM ready (or add to your existing bindings) ---
+document.addEventListener('DOMContentLoaded', () => {
+  const clearBtn = document.getElementById('clearCve');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', clearCveFields);
+  }
+});
+ 
+/* ---------- Init ---------- */
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   loadVulnCheck();
   loadExploitationWatch();
   displayFeeds();
   initInlineAnalysis();
+  bindSearchHandlers();
+  maybeRefreshFeeds(); // only if Tab 2 is active
   
-  // Search handlers
-  document.getElementById("go")?.addEventListener("click", handleSearch);
-  document.getElementById("cve")?.addEventListener("keydown", e => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleSearch();
-    }
+  document.getElementById("go").addEventListener("click", handleSearch);
+  document.getElementById("cve").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
   });
-
   document.getElementById("closeModal")?.addEventListener("click", () => {
     document.getElementById("attackModal").style.display = "none";
   });
 
-  // Clear button
-  document.getElementById('clearCve')?.addEventListener('click', clearCveFields);
-
-  // CVE link click → load single CVE view
-
-      document.addEventListener('click', function(e) {
-      const a = e.target.closest('.cve-link');
-      if (a) {
-      const cveId = a.getAttribute('data-cve');
-
-      previousVendorSearch = { ...vendorSearchState };
-
-      const inputEl = document.getElementById('cve');
-      if (inputEl) inputEl.value = cveId;
-
-      const loadingEl = document.getElementById('loading');
-      if (loadingEl) loadingEl.style.display = 'flex';
-
-      // Hide back button during new load (prevents stale buttons)
-      const backBtn = document.getElementById('backToList');
-      if (backBtn) backBtn.style.display = 'none';
-
-      runSearch()  // ← no await needed unless you make runSearch return Promise
-        .then(() => {
-          let backBtn = document.getElementById('backToList');
-          if (!backBtn) {
-            const header = document.querySelector('header.cve-header');
-            if (!header) return;
-            backBtn = document.createElement('button');
-            backBtn.id = 'backToList';
-            backBtn.className = 'btn';
-            backBtn.textContent = '← Back to List';
-            backBtn.style.marginLeft = '12px';
-            header.appendChild(backBtn);
-          }
-          backBtn.style.display = 'inline-block';
-        })
-        .catch(err => {
-          console.error(err);
-          toast('Failed to load CVE details');
-        })
-        .finally(() => {
-          if (loadingEl) loadingEl.style.display = 'none';
-        });
-    }
-  });
-
-  // Back button click → restore list
-  document.addEventListener('click', function(e) {
-    if (e.target.id === 'backToList' && previousVendorSearch) {
-      e.preventDefault();
-
-      vendorSearchState = { ...previousVendorSearch };
-
-      const inputEl = document.getElementById('cve');
-      if (inputEl) inputEl.value = previousVendorSearch.keyword || '';
-
-      renderVendorProductResults(
-        {
-          vulnerabilities: previousVendorSearch.allVulns,
-          totalResults: previousVendorSearch.totalResults,
-          // You can omit startIndex if render function doesn't strictly need it
-          // startIndex: previousVendorSearch.currentStartIndex - previousVendorSearch.allVulns.length
-        },
-        previousVendorSearch.keyword,
-        false
-      );
-
-      const backBtn = document.getElementById('backToList');
-      if (backBtn) backBtn.style.display = 'none';
-
-      document.getElementById('cveContent')?.scrollIntoView({ behavior: 'smooth' });
-    }
-  });
-  });
-  // ---- END GUARD (temporary) ----
-(function __end_guard__() { return true; })();
+  // ✅ Auto-refresh intervals
+  setInterval(loadExploitationWatch, 15 * 60 * 1000); // every 15 minutes
+  setInterval(loadVulnCheck, 60 * 60 * 1000);         // every hour
+  setInterval(maybeRefreshFeeds, 10 * 60 * 1000);
+ 
+});
 </script>
+</body>
 </html>
