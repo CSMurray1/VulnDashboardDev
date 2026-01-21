@@ -1248,7 +1248,9 @@ async function displayFeeds() {
 /* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
 
 ;(() => {
-  // Create the Watcher button early for both file-origin and normal paths
+  
+let notif = null;
+let overlay = null;
   const btn = document.createElement('button');
   btn.id = 'watcherBtn';
   btn.className = 'btn';
@@ -1380,10 +1382,13 @@ function mountWatcherUI() {
     </div>`;
   document.body.appendChild(overlay);
 
-  // Notification container (exposed via outer `notif`)
-  notif = document.createElement('div');
+if (!notif) {
+  notif = document.getElementById('watcherNotify') || document.createElement('div');
   notif.id = 'watcherNotify';
-  document.body.appendChild(notif);
+  if (!notif.parentNode) {
+    document.body.appendChild(notif);
+  }
+}
 
   // Overlay actions
   overlay.addEventListener('click', (e) => { if (e.target.id === 'watcher') overlay.style.display = 'none'; });
@@ -1446,9 +1451,15 @@ if (document.readyState === 'loading') {
       <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
     </div>`;
   document.body.appendChild(overlay);
-  const notif = document.createElement('div'); notif.id = 'watcherNotify'; document.body.appendChild(notif);
-  function kevBadge(kev){ if (!kev) return ''; return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`; }
-
+  
+if (!notif) {
+  notif = document.getElementById('watcherNotify') || document.createElement('div');
+  notif.id = 'watcherNotify';
+  if (!notif.parentNode) {
+    document.body.appendChild(notif);
+  }
+ 
+function kevBadge(kev){ if (!kev) return ''; return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`; }
 function showNotification(items) {
   const dark = document.body.classList.contains('dark');
   // use the outer-scoped `notif` created in mountWatcherUI()
