@@ -517,6 +517,7 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
 }
 </style>
 </head>
+<body>
 <script>
 /* ---------- Origins & Endpoints ---------- */
 const IS_FILE_ORIGIN = location.protocol === 'file:';
@@ -846,7 +847,6 @@ function renderVendorProductResults(json) {
   });
   const content = document.getElementById('cveContent');
   content.innerHTML = html || '<div class="meta">No matching vulnerabilities found.</div>';
-  renderRelevantSearches(keyword);
 }
 async function runVendorProductSearch(keyword) {
   const loadingEl = document.getElementById("loading"); if (loadingEl) loadingEl.style.display = "flex";
@@ -1034,21 +1034,29 @@ async function runSearch() {
     const cwesForPrompt = (cna?.problemTypes || [])
       .flatMap(pt => (pt.descriptions || [])
         .map(d => ({ id: d?.cweId || d?.id || 'Unknown', desc: d?.description || d?.value || '', assigner: cna?.providerMetadata?.shortName || 'CNA' })));
-    __lastAnalysisContext = {
-      input,
-      isCVE: true,
-      cnaName,
-      description: desc,
-      kevYes,
-      ransomwareTag,
-      epss: epssData ? { score: Number(epssData.epss), percentile: Number(epssData.percentile) } : null,
-      cvss: cvssForPrompt,
-      cwes: cwesForPrompt,
-      referencesGrouped
-    };
 
-    // EPSS block
-    const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
+
+// EPSS block — fetch first, then build context
+const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
+const epssForCtx = epssData ? {
+  score: Number(epssData.epss),
+  percentile: Number(epssData.percentile)
+} : null;
+
+// Build analysis context
+__lastAnalysisContext = {
+  input,
+  isCVE: true,
+  cnaName,
+  description: desc,
+  kevYes,
+  ransomwareTag,
+  epss: epssForCtx,
+  cvss: cvssForPrompt,
+  cwes: cwesForPrompt,
+  referencesGrouped
+};    
+
     const epssDateStr = epssData?.date ? `(as of ${new Date(epssData.date).toLocaleString()})` : '';
     const epssInlineHtml = epssData ? `
       <div class="metrics-box">
@@ -1244,19 +1252,21 @@ async function displayFeeds() {
     }
   }
 }
-// Main CVE search flow
-/* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
-
+// Main CVE search flow  
+/* ---------- CVE Watcher (single IIFE, no duplicates) ---------- */
 ;(() => {
+  const IS_FILE_ORIGIN = location.protocol === 'file:';
+
   let notif = null;
   let overlay = null;
   const btn = document.createElement('button');
   btn.id = 'watcherBtn';
   btn.className = 'btn';
+  btn.textContent = 'CVE Watcher';
 
-  // If loaded via file://, attach the button and exit
+  // If loaded via file:// keep it simple and exit early
   if (IS_FILE_ORIGIN) {
-    function ensureWatcherButtonFile() {
+    const mountFileButton = () => {
       const hdr = document.querySelector('header.cve-header');
       if (!hdr) {
         btn.style.position = 'fixed';
@@ -1267,13 +1277,13 @@ async function displayFeeds() {
       } else {
         hdr.appendChild(btn);
       }
-    }
+    };
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', ensureWatcherButtonFile);
+      document.addEventListener('DOMContentLoaded', mountFileButton);
     } else {
-      ensureWatcherButtonFile();
+      mountFileButton();
     }
-    return; // skip the rest of the watcher when on file origin
+    return;
   }
 
   function ensureWatcherButton() {
@@ -1287,11 +1297,11 @@ async function displayFeeds() {
     } else {
       hdr.appendChild(btn);
     }
+  }
 
-  
   function ensureOverlay() {
-    if (overlay) return;                       // already created
-    overlay = document.createElement('div');   // <-- assign, DO NOT 'const'/'let' here
+    if (overlay) return;
+    overlay = document.createElement('div');
     overlay.id = 'watcher';
     Object.assign(overlay.style, {
       display:'none', position:'fixed', top:'0', left:'0', width:'100%', height:'100%',
@@ -1310,29 +1320,49 @@ async function displayFeeds() {
           <button id="watcherKev" class="btn">Refresh KEV</button>
           <button id="watcherClose" class="btn">Close</button>
         </div>
-        <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
+        <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.</p>
       </div>`;
     document.body.appendChild(overlay);
 
-    // Now it exists—safe to attach listeners
+    // Overlay listeners
     overlay.addEventListener('click', (e) => { if (e.target.id === 'watcher') overlay.style.display = 'none'; });
     overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display = 'none');
     overlay.querySelector('#watcherSave').addEventListener('click', () => {
       const list = parseList(document.getElementById('watcherList').value);
-      localStorage.setItem(STORAGE_KEY, list.join('\n'));
+      localStorage.setItem('cveWatcher.list', list.join('\n'));
       const interval = Math.max(5, Number(document.getElementById('watcherInterval').value) || 30);
-      localStorage.setItem(INTERVAL_KEY, String(interval));
+      localStorage.setItem('cveWatcher.interval', String(interval));
       overlay.style.display = 'none';
-      if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length !== 1 ? 's' : ''}; ${interval} min)`);
+      toast && toast(`CVE Watcher saved (${list.length} CVE${list.length !== 1 ? 's' : ''}; ${interval} min)`);
       start();
     });
-    overlay.querySelector('#watcherStop').addEventListener('click', () => { stop(); overlay.style.display = 'none'; if (typeof toast === 'function') toast('CVE Watcher stopped'); });
-    overlay.querySelector('#watcherCheck').addEventListener('click', async () => { if (typeof toast === 'function') toast('Checking now…'); await poll(); if (typeof toast === 'function') toast('Check complete'); });
-    overlay.querySelector('#watcherReset').addEventListener('click', () => { notified.clear(); localStorage.removeItem(NOTIFIED_KEY); if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check'); });
-    overlay.querySelector('#watcherKev').addEventListener('click', async () => { if (typeof toast === 'function') toast('Refreshing KEV…'); await refreshKev(); if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`); });
+    overlay.querySelector('#watcherStop').addEventListener('click', () => { stop(); overlay.style.display = 'none'; toast && toast('CVE Watcher stopped'); });
+    overlay.querySelector('#watcherCheck').addEventListener('click', async () => { toast && toast('Checking now…'); await poll(); toast && toast('Check complete'); });
+    overlay.querySelector('#watcherReset').addEventListener('click', () => { notified.clear(); localStorage.removeItem('cveWatcher.notified'); toast && toast('CVE Watcher dedupe reset'); });
+    overlay.querySelector('#watcherKev').addEventListener('click', async () => { toast && toast('Refreshing KEV…'); await refreshKev(); toast && toast(`KEV refreshed (${kevSet.size} entries)`); });
   }
 
-    
+  function mountWatcherUI() {
+    ensureWatcherButton();
+    ensureOverlay();
+
+    // Toggle overlay
+    btn.addEventListener('click', () => {
+      document.getElementById('watcherList').value = (localStorage.getItem('cveWatcher.list') || '');
+      document.getElementById('watcherInterval').value = (localStorage.getItem('cveWatcher.interval') || 30);
+      overlay.style.display = 'flex';
+    });
+
+    // Notification container (once)
+    notif = document.getElementById('watcherNotify') || document.createElement('div');
+    notif.id = 'watcherNotify';
+    if (!notif.parentNode) document.body.appendChild(notif);
+
+    // Autostart if we have saved CVEs
+    if (parseList(localStorage.getItem('cveWatcher.list')).length) start();
+  }
+
+  // ---- state, helpers, polling (your existing code) ----
   const STORAGE_KEY = 'cveWatcher.list';
   const INTERVAL_KEY = 'cveWatcher.interval';
   const NOTIFIED_KEY = 'cveWatcher.notified';
@@ -1342,102 +1372,50 @@ async function displayFeeds() {
   const KEV_FETCH_KEY = 'cveWatcher.kevFetchedAt';
   const KEV_REFRESH_MINUTES = 60;
   const notified = new Set();
-  function loadNotified(){ try { const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); if (Array.isArray(arr)) arr.forEach(k => notified.add(k)); } catch {} }
-  function persistNotified(){ try { localStorage.setItem(NOTIFIED_KEY, JSON.stringify(Array.from(notified))); } catch {} }
+  function loadNotified(){ try{ const arr = JSON.parse(localStorage.getItem(NOTIFIED_KEY) || '[]'); if(Array.isArray(arr)) arr.forEach(k => notified.add(k)); } catch{} }
+  function persistNotified(){ try{ localStorage.setItem(NOTIFIED_KEY, JSON.stringify([...notified])); } catch{} }
   loadNotified();
   let kevSet = null; let kevMap = null;
-  function loadKev(){
-    try { const arr = JSON.parse(localStorage.getItem(KEV_SET_KEY) || '[]'); kevSet = new Set(arr.map(s => s.toUpperCase())); } catch { kevSet = new Set(); }
-    try { kevMap = JSON.parse(localStorage.getItem(KEV_MAP_KEY) || '{}') || {}; } catch { kevMap = {}; }
-  }
+  function loadKev(){ try{ const arr = JSON.parse(localStorage.getItem(KEV_SET_KEY) || '[]'); kevSet = new Set(arr.map(s => s.toUpperCase())); } catch{ kevSet = new Set(); }
+                         try{ kevMap = JSON.parse(localStorage.getItem(KEV_MAP_KEY) || '{}') || {}; } catch{ kevMap = {}; } }
   loadKev();
-  function minutesSince(ts){ if (!ts) return Infinity; const then = new Date(ts).getTime(); if (Number.isNaN(then)) return Infinity; return (Date.now() - then) / (60*1000); }
+  function minutesSince(ts){ if(!ts) return Infinity; const then = new Date(ts).getTime(); if(Number.isNaN(then)) return Infinity; return (Date.now()-then)/(60*1000); }
   function shouldRefreshKev(){ const last = localStorage.getItem(KEV_FETCH_KEY); return minutesSince(last) >= KEV_REFRESH_MINUTES || !kevSet || kevSet.size === 0; }
-  async function refreshKev(){
-    try {
-      const kevUrl = 'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
-      const text = await fetchTextWithFallback(kevUrl);
-      const data = JSON.parse(text);
-      const list = Array.isArray(data?.vulnerabilities) ? data.vulnerabilities : [];
-      const ids = []; const map = {};
-      for (const v of list){
-        const cve = String(v.cveID || v.cve_id || '').toUpperCase().replace(/[\u2010-\u2015\u2212]/g, '-');
-        if (!cve) continue;
-        ids.push(cve);
-        map[cve] = { vendor : String(v.vendorProject || '').trim(), product : String(v.product || '').trim(), dateAdded : (v.dateAdded || v.date_added || '').slice(0, 10) };
-      }
-      kevSet = new Set(ids); kevMap = map;
-      localStorage.setItem(KEV_SET_KEY, JSON.stringify(ids));
-      localStorage.setItem(KEV_MAP_KEY, JSON.stringify(map));
-      localStorage.setItem(KEV_FETCH_KEY, new Date().toISOString());
-    } catch (e){ if (!kevSet) kevSet = new Set(); if (!kevMap) kevMap = {}; }
-  }
+  async function refreshKev(){ try{ const kevUrl='https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json';
+    const text = await fetchTextWithFallback(kevUrl); const data = JSON.parse(text);
+    const list = Array.isArray(data?.vulnerabilities) ? data.vulnerabilities : [];
+    const ids=[]; const map={}; for(const v of list){ const cve=String(v.cveID || v.cve_id || '').toUpperCase().replace(/[\u2010-\u2015\u2212]/g,'-'); if(!cve) continue; ids.push(cve);
+      map[cve] = { vendor:String(v.vendorProject||'').trim(), product:String(v.product||'').trim(), dateAdded:(v.dateAdded||v.date_added||'').slice(0,10) }; }
+    kevSet = new Set(ids); kevMap = map;
+    localStorage.setItem(KEV_SET_KEY, JSON.stringify(ids));
+    localStorage.setItem(KEV_MAP_KEY, JSON.stringify(map));
+    localStorage.setItem(KEV_FETCH_KEY, new Date().toISOString());
+  } catch(e){ if(!kevSet) kevSet = new Set(); if(!kevMap) kevMap = {}; } }
   function isKev(cve){ return kevSet && kevSet.has(cve.toUpperCase()); }
   function kevInfo(cve){ return kevMap && kevMap[cve.toUpperCase()] || null; }
-
-  function mountWatcherUI() {
-    ensureWatcherButton();
-    ensureOverlay();                            // <- make sure overlay exists before using it
-
-    // Button toggles overlay
-    btn.addEventListener('click', () => {
-      document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
-      document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
-      overlay.style.display = 'flex';
-    });
-
-    // Autostart if we have saved CVEs
-    if (parseList(localStorage.getItem(STORAGE_KEY)).length) {
-      start();
-    }
+  function kevBadge(kev){ if(!kev) return ''; return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`; }
+  function parseList(raw){ return (raw||'').toUpperCase().split(/[\s,;]+/).map(s=>s.trim()).filter(s=>/^CVE-\d{4}-\d{4,}$/.test(s)); }
+  function showNotification(items){ const dark = document.body.classList.contains('dark');
+    notif.innerHTML = items.map(i => {
+      const kinfo = i.kev ? kevInfo(i.cve) : null;
+      const vendorProductCve = kinfo ? [kinfo.vendor,kinfo.product,i.cve].filter(Boolean).join(' · ') : i.cve;
+      const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
+      return `<div style="background:${dark ? '#1e1e1e' : '#fff'};color:inherit;border:1px solid ${dark ? 'var(--border-dark)' : 'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link,'Source')} · ${metaLine}</div></div>`;
+    }).join('');
+    notif.style.display = 'block';
+    setTimeout(() => { notif.style.display = 'none'; }, 15000);
   }
 
+  // mount once
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountWatcherUI);
   } else {
     mountWatcherUI();
-
-   // Button toggles overlay
-  btn.addEventListener('click', () => {
-    document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
-    document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
-    overlay.style.display = 'flex';
-  });
-
-  // Start polling if saved list exists
-  if (parseList(localStorage.getItem(STORAGE_KEY)).length) {
-    start();
   }
-}
 
-// Mount UI only when <body> exists
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mountWatcherUI);
-} else {
-  mountWatcherUI();
-}
-  document.body.appendChild(overlay);
-  
-if (!notif) {
-  notif = document.getElementById('watcherNotify') || document.createElement('div');
-  notif.id = 'watcherNotify';
-  if (!notif.parentNode) {
-    document.body.appendChild(notif);
-  }
- 
-function kevBadge(kev){ if (!kev) return ''; return `<span style="display:inline-block;margin-left:8px;padding:2px 6px;border-radius:999px;background:#c62828;color:#fff;font-size:11px;line-height:1;font-weight:600">KEV</span>`; }
-function showNotification(items) {
-  const dark = document.body.classList.contains('dark');
-  // use the outer-scoped `notif` created in mountWatcherUI()
-  notif.innerHTML = items.map(i => {
-    const kinfo = i.kev ? kevInfo(i.cve) : null;
-    const vendorProductCve = kinfo ? [kinfo.vendor, kinfo.product, i.cve].filter(Boolean).join(' · ') : i.cve;
-    const metaLine = `${vendorProductCve}${i.source ? ' · ' + i.source : ''}`;
-    return `<div style="background:${dark ? '#1e1e1e' : '#fff'};color:inherit;border:1px solid ${dark ? 'var(--border-dark)' : 'var(--border-light)'};border-radius:8px;padding:12px;margin-top:8px;box-shadow:0 4px 12px rgba(0,0,0,0.2)"><div style="font-weight:600">CVE Watcher hit: ${i.cve}${kevBadge(i.kev)}</div><div style="font-size:13px;margin:6px 0">${linkRow(i.link, 'Source')} · ${metaLine}</div></div>`;
-  }).join('');
-  notif.style.display = 'block';
-  setTimeout(() => { notif.style.display = 'none'; }, 15000);
-}
+  // (Your existing getSources/pageMentionsCve/fetchMentionsForCve/poll/start/stop go here unchanged)
+})();
+
   function parseList(raw){ return (raw||'').toUpperCase().split(/[\s,;]+/).map(s=>s.trim()).filter(s=>/^CVE-\d{4}-\d{4,}$/.test(s)); }
   function getSources(){
     return [
