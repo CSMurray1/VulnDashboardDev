@@ -1012,23 +1012,6 @@ async function runSearch() {
         <table><tr><th>Status</th><td>No SSVC Data is Available at this time.</td></tr></table>
       </div>`;
     }
-
-    // EPSS block
-    const epssDateStr = epssData?.date ? `(as of ${new Date(epssData.date).toLocaleString()})` : '';
-    const epssInlineHtml = epssData ? `
-      <div class="metrics-box">
-        <div class="title">EPSS Metrics</div>
-        <table>
-          <tr><th>EPSS Score</th><td>${Number(epssData.epss).toFixed(4)} ${epssDateStr}</td></tr>
-          <tr><th>30-day Probability</th><td>${(Number(epssData.epss) * 100).toFixed(2)}% ${epssDateStr}</td></tr>
-          <tr><th>Percentile</th><td>${(Number(epssData.percentile) * 100).toFixed(1)}% ${epssDateStr}</td></tr>
-        </table>
-      </div>` : `
-      <div class="metrics-box">
-        <div class="title">EPSS Metrics</div>
-        <table><tr><th>Status</th><td>No EPSS data available</td></tr></table>
-      </div>`;
-
     // References (by host) from CNA
     const refs = (cna.references || []).filter(r => r.url && r.url.startsWith('https://'));
     const grouped = refs.reduce((acc, r) => {
@@ -1046,7 +1029,6 @@ async function runSearch() {
         </div>`;
     }).join("") || '<div class="meta">No references found.</div>';
     document.getElementById("sourcesContent").innerHTML = refsHtml;
-
     // CVSS metrics (CNA + NVD)
     const metrics = [];
     (cna.metrics || []).forEach(m => {
