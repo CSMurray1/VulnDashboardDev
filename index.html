@@ -515,8 +515,11 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
     <main class="cve-main">
       <!-- panels unchanged -->
       <div id="cveDetails" class="panel"><header><h2>CVE Details &amp; Exploitation Signals</h2></header><div class="content" id="cveContent"><div class="meta">Enter a CVE or Vendor/Product and click Run.</div></div></div>
-      <div id="exploitationWatch" class="panel"><header><h2>CVE &amp; Exploitation Watcher</h2></header><div class="content" id="watchContent"><div class="meta">Loading feeds…</div></div></div>
-      <div id="vulncheckMonitor" class="panel"><header><h2>Recent VulnCheck KEV (last 10 days)</h2></header><div class="content" id="vulncheckContent"><div class="meta">Loading...</div></div></div>
+      <div id="exploitationWatch" class="panel"><header><h2>CVE & Exploitation Watcher</h2><button class="btn" id="watchRefresh">Refresh</button></header><div class="content" id="watchContent"><div class="meta">Loading feeds…</div></div></div>
+      <div id="vulncheckMonitor" class="panel"><header><h2>Recent VulnCheck KEV (last 10 days)</h2><button class="btn" id="vulncheckRefresh">Refresh</button></header><div class="content" id="vulncheckContent"><div class="meta">Loading...</div></div></div>
+
+      
+      
       <div id="notableSources" class="panel"><header><h2>Notable Sources &amp; References</h2></header><div class="content" id="sourcesContent"><div class="meta">Will appear after running a CVE.</div></div></div>
       <div id="relevantSearches" class="panel"><header><h2>Relevant Searches &amp; Monitoring</h2></header><div class="content" id="searchLinks"><div class="meta">Enter a term above and click Run to populate links.</div></div></div>
     </main>
@@ -1011,7 +1014,6 @@ async function runSearch() {
     }
 
     // EPSS block
-    const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
     const epssDateStr = epssData?.date ? `(as of ${new Date(epssData.date).toLocaleString()})` : '';
     const epssInlineHtml = epssData ? `
       <div class="metrics-box">
@@ -1122,38 +1124,6 @@ async function runSearch() {
       referencesGrouped
     };
 
-    // Paint CVE panel (KEV badge now uses kevLabel)
-    const cveContent = document.getElementById("cveContent");
-    cveContent.innerHTML = `
-      <div class="item"><div class="title">${input} · CNA: ${cnaName}</div></div>
-      <div class="item"><div class="title">Published: ${published}</div></div>
-      <div class="item"><div class="title">Description</div><div class="meta">${desc}</div></div>
-      <div class="item">
-        <div class="title">Exploitation Signals</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-          <div class="badge ${kevYes ? 'yes' : 'no'}">${kevLabel}</div>
-          ${kevYes
-            ? `<div class="badge ${String(ransomwareTag).toLowerCase()==='known' ? 'yes' : 'no'}">Ransomware: ${ransomwareTag}</div>`
-            : `<div class="badge no">Ransomware: Unknown</div>`}
-          ${inVulncheck ? '<div class="badge yes">VulnCheck Recent</div>' : ''}
-        </div>
-        <div class="metrics-row">
-          <div class="metrics-col">${epssInlineHtml}</div>
-          <div class="metrics-col">${ssvcInlineHtml}</div>
-        </div>
-      </div>
-      <div class="item"><div class="title">CWE Information</div><div class="meta">${cweHtml}</div></div>
-      <div class="item"><div class="title">CVSS Metrics</div><div class="meta">${cvssHtml}</div></div>
-      <div class="item"><div class="title">Quick Links</div><div class="meta">${quickLinksHtml}</div></div>
-    `;
-  } catch (err) {
-    document.getElementById("cveContent").innerHTML =
-      `<div class="meta">Error loading data: ${err.message}</div>`;
-    renderRelevantSearches(inputRaw);
-  } finally {
-    if (loadingEl) loadingEl.style.display = "none";
-  }
-}
     // EPSS block
     const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
     const epssDateStr = epssData?.date ? `(as of ${new Date(epssData.date).toLocaleString()})` : '';
@@ -1357,17 +1327,9 @@ function renderRansomwareSearches(cveId){
   const container = document.getElementById("searchLinks");
   container.insertAdjacentHTML('beforeend', `<div class="item"><div class="title">Ransomware-Focused Searches</div><div class="meta">${rows}</div></div>`);
 }
-
-function isTab2Active() {
-  return document.getElementById('tab2')?.classList.contains('active');
+async function refreshFeedsOnTimer() {
+  await displayFeeds();
 }
-
-async function maybeRefreshFeeds() {
-  if (isTab2Active()) {
-    await displayFeeds();
-  }
-}
-  
 /* ---------- Dashboard 2 Feeds ---------- */
 const feeds = [
   { name:"SecurityWeek", url:"https://www.securityweek.com/feed/" },
@@ -1621,12 +1583,8 @@ function switchTab(tabIndex) {
   const tabs = [document.getElementById('tab1'), document.getElementById('tab2')];
   document.querySelectorAll('nav button').forEach((btn, i) => { btn.classList.toggle('active', i === tabIndex); });
   tabs.forEach((tab, i) => { tab.classList.toggle('active', i === tabIndex); });
-
-  // ✅ if switching to Tab 2, refresh feeds once
-  if (tabIndex === 1) {
-    maybeRefreshFeeds();
-  }
 }
+
 /* ---------- Search bindings ---------- */
 function handleSearch() {
   try {
@@ -1717,21 +1675,21 @@ document.addEventListener("DOMContentLoaded", () => {
   displayFeeds();
   initInlineAnalysis();
   bindSearchHandlers();
-  maybeRefreshFeeds(); // only if Tab 2 is active
-  
+    
   document.getElementById("go").addEventListener("click", handleSearch);
   document.getElementById("cve").addEventListener("keydown", e => {
     if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
   });
   document.getElementById("closeModal")?.addEventListener("click", () => {
-    document.getElementById("attackModal").style.display = "none";
+  document.getElementById("attackModal").style.display = "none";
   });
-
+  document.getElementById('watchRefresh')?.addEventListener('click', loadExploitationWatch);
+  document.getElementById('vulncheckRefresh')?.addEventListener('click', loadVulnCheck);
+  });
   // ✅ Auto-refresh intervals
   setInterval(loadExploitationWatch, 15 * 60 * 1000); // every 15 minutes
   setInterval(loadVulnCheck, 60 * 60 * 1000);         // every hour
-  setInterval(maybeRefreshFeeds, 10 * 60 * 1000);
- 
+  setInterval(refreshFeedsOnTimer, 10 * 60 * 1000);
 });
 </script>
 </body>
