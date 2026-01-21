@@ -7,22 +7,27 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪲</text></svg>'" />
 <!-- ===== Global Styles ===== -->
 <style>
+
 :root {
   --bg-light: #f8f9fa;
   --text-light: #212529;
   --panel-light: #ffffff;
   --border-light: #dee2e6;
   --link-light: #0d6efd;
+
   --bg-dark: #121212;
   --text-dark: #e9ecef;
   --panel-dark: #1e1e1e;
   --border-dark: #343a40;
   --link-dark: #8ab4f8;
+
   --input-bg-dark: #2d2d2d;
   --input-text-dark: #e9ecef;
+
   --heat-bar: #0d6efd;
 }
-/* Base */
+
+/* ===== Base Styles ===== */
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   margin: 0;
@@ -38,9 +43,14 @@ a {
   color: var(--link-light);
   text-decoration: none;
 }
-body.dark a { color: var(--link-dark); }
-a:hover { text-decoration: underline; }
-/* Top nav tabs */
+body.dark a {
+  color: var(--link-dark);
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* ===== Navigation Tabs ===== */
 nav {
   display: flex;
   justify-content: center;
@@ -58,12 +68,23 @@ nav button {
   outline: none;
   transition: background 0.3s;
 }
-nav button.active { background: #0074d9; }
-nav button:hover { background: #555; }
-/* Tabs container limits show/hide scope */
-.tabs > section { display: none; padding: 20px; }
-.tabs > section.active { display: block; }
-/* Mode Toggle Button (floating) */
+nav button.active {
+  background: #0074d9;
+}
+nav button:hover {
+  background: #555;
+}
+
+/* ===== Tabs Container ===== */
+.tabs > section {
+  display: none;
+  padding: 20px;
+}
+.tabs > section.active {
+  display: block;
+}
+
+/* ===== Mode Toggle Button ===== */
 .mode {
   position: fixed;
   top: 14px;
@@ -82,7 +103,8 @@ body.dark .mode {
   color: #f4f4f9;
   border-color: #666;
 }
-/* Dashboard 1 (CVE) Header */
+
+/* ===== Dashboard 1 Header ===== */
 header.cve-header {
   padding: 20px;
   background: inherit;
@@ -95,7 +117,9 @@ header.cve-header {
   top: 0;
   z-index: 10;
 }
-body.dark header.cve-header { border-color: var(--border-dark); }
+body.dark header.cve-header {
+  border-color: var(--border-dark);
+}
 header.cve-header h1 {
   margin: 0;
   font-size: 22px;
@@ -109,8 +133,10 @@ header.cve-header h1::before {
   display: block;
   width: 36px;
   height: 36px;
-  background: url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪲</text></svg>') center/cover no-repeat;
+  background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🪲</text></svg>') center/cover no-repeat;
 }
+
+/* ===== Inputs & Buttons ===== */
 #cve {
   flex: 1;
   min-width: 300px;
@@ -139,7 +165,8 @@ body.dark .btn {
   border-color: var(--border-dark);
   color: var(--text-dark);
 }
-/* Dashboard 1 Layout */
+
+/* ===== Dashboard Layout ===== */
 main.cve-main {
   padding: 24px;
   display: grid;
@@ -175,7 +202,8 @@ main.cve-main {
 #vulncheckMonitor { grid-area: vulncheck; }
 #notableSources { grid-area: sources; }
 #relevantSearches { grid-area: relevant; }
-/* Panels */
+
+/* ===== Panels ===== */
 .panel {
   background: var(--panel-light);
   border: 1px solid var(--border-light);
@@ -209,7 +237,8 @@ body.dark .item { border-color: #444; }
 .item:last-child { border: none; }
 .title { font-weight: 600; margin-bottom: 6px; }
 .meta { font-size: 14px; opacity: .9; }
-/* Chips & badges */
+
+/* ===== Chips & Badges ===== */
 .chip {
   display: inline-block;
   padding: 4px 10px;
@@ -219,10 +248,10 @@ body.dark .item { border-color: #444; }
   color: white;
   margin-left: 8px;
 }
-.low{background:#2d7f3a;}
-.medium{background:#b57f00;}
-.high{background:#cc4a00;}
-.critical{background:#a60000;}
+.low { background:#2d7f3a; }
+.medium { background:#b57f00; }
+.high { background:#cc4a00; }
+.critical { background:#a60000; }
 .badge {
   display: inline-block;
   padding: 5px 10px;
@@ -230,11 +259,12 @@ body.dark .item { border-color: #444; }
   font-size: 13px;
   font-weight: 600;
 }
-.yes{background:#d4edda;color:#155724;}
-.no{background:#f8d7da;color:#721c24;}
-body.dark .yes{background:#1e3f2a;color:#a7f3c0;}
-body.dark .no{background:#4a1e20;color:#f5b5bb;}
-/* Link row + Copy */
+.yes { background:#d4edda; color:#155724; }
+.no { background:#f8d7da; color:#721c24; }
+body.dark .yes { background:#1e3f2a; color:#a7f3c0; }
+body.dark .no { background:#4a1e20; color:#f5b5bb; }
+
+/* ===== Links & Copy Buttons ===== */
 .link-row {
   margin:6px 0;
   display:flex;
@@ -255,7 +285,8 @@ body.dark .copy-link {
   background: var(--input-bg-dark);
   color: var(--text-dark);
 }
-/* EPSS/SSVC layout */
+
+/* ===== Metrics Layout ===== */
 .metrics-row {
   display:flex;
   gap:16px;
@@ -292,7 +323,8 @@ body.dark .metrics-box { background: rgba(13,110,253,0.2); }
   font-weight: 600;
   color: #0d6efd;
 }
-/* Toast + Loading */
+
+/* ===== Toast & Loading ===== */
 #toast {
   position:fixed;
   bottom:30px;
@@ -319,7 +351,8 @@ body.dark .metrics-box { background: rgba(13,110,253,0.2); }
   justify-content:center;
   z-index:1200;
 }
-/* Modal (Attack Visualizer) */
+
+/* ===== Modals ===== */
 #attackModal {
   display:none;
   position:fixed;
@@ -338,6 +371,8 @@ body.dark #attackModal { background: var(--bg-dark); }
   right:10px;
   z-index:1110;
 }
+
+/* Settings Modal */
 .settings-content {
   background: var(--panel-light);
   padding:30px;
@@ -366,7 +401,8 @@ body.dark .settings-content input, body.dark .settings-content textarea {
   margin-bottom:16px;
   font-weight:600;
 }
-/* Prevalence modal */
+
+/* Prevalence Modal */
 #prevalenceModal {
   display:none;
   position:fixed;
@@ -401,11 +437,12 @@ body.dark .prev-content {
   align-items:center;
   margin-bottom:12px;
 }
-/* Dark mode fix for AI Analysis modal */
+
+/* ===== AI Analysis Modal (Dark Mode Consolidated) ===== */
 body.dark #analysisModal > div {
-  background: var(--panel-dark);
-  color: var(--text-dark);
-  border-color: var(--border-dark);
+  background: var(--panel-dark) !important;
+  color: var(--text-dark) !important;
+  border-color: var(--border-dark) !important;
 }
 body.dark #analysisBody {
   background: var(--input-bg-dark);
@@ -415,13 +452,6 @@ body.dark #analysisBody {
 body.dark #analysisStatus {
   color: var(--text-dark);
 }
-/* Dark mode fix for AI Analysis modal outer container */
-body.dark #analysisModal > div {
-  background: var(--panel-dark);
-  color: var(--text-dark);
-  border-color: var(--border-dark);
-}
-/* Ensure headings and buttons inside modal adapt */
 body.dark #analysisModal h3 {
   color: var(--text-dark);
 }
@@ -430,13 +460,8 @@ body.dark #analysisModal .btn {
   color: var(--text-dark);
   border-color: var(--border-dark);
 }
-/* Analysis body box (where text streams) */
-body.dark #analysisBody {
-  background: var(--input-bg-dark);
-  color: var(--input-text-dark);
-  border-color: var(--border-dark);
-}
-/* Dashboard 2 (Feeds) */
+
+/* ===== Dashboard 2 (Feeds) ===== */
 .feeds-header { text-align:center; }
 .feed-container { display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; }
 .feed {
@@ -457,7 +482,8 @@ body.dark .feed {
 .feed ul li { margin-bottom:10px; }
 .feed ul li a { color: #0074d9; text-decoration: none; }
 body.dark .feed ul li a { color: #5caeff; }
-/* Watcher notify panel */
+
+/* ===== Watcher Notify Panel ===== */
 #watcherNotify {
   position: fixed;
   bottom: 24px;
@@ -466,15 +492,9 @@ body.dark .feed ul li a { color: #5caeff; }
   z-index: 1400;
   display: none;
 }
-/* Dark mode fix for Watcher textarea placeholder */
 body.dark #watcherList::placeholder { color: #bbb; }
-/* Force dark mode for AI Analysis modal outer container */
-body.dark #analysisModal > div {
-  background: var(--panel-dark) !important;
-  color: var(--text-dark) !important;
-  border-color: var(--border-dark) !important;
-}
-/* Exploitation Watcher Scrollbar */
+
+/* ===== Exploitation Watcher Scrollbar ===== */
 #watchContent {
   max-height: 320px;
   overflow-y: auto;
@@ -497,61 +517,6 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
 }
 </style>
 </head>
-<body class="light">
-<button class="mode" onclick="toggleMode()">Dark Mode</button>
-<nav>
-  <button onclick="switchTab(0)" class="active">CVE Dashboard</button>
-  <button onclick="switchTab(1)">CyberWatch Dashboard</button>
-</nav>
-<div class="tabs">
-  <section id="tab1" class="active">
-    <header class="cve-header">
-      <h1>Vulnerability Analysis Dashboard</h1>
-      <input id="cve" type="text" placeholder="Enter CVE (e.g., CVE-2021-44228) or Vendor/Product" />
-      <button id="go" class="btn">Run</button>
-      <button id="clearCve" class="btn">Clear</button>
-      <button id="aiAnalysis" class="btn">AI Analysis</button>
-    </header>
-    <main class="cve-main">
-      <!-- panels unchanged -->
-      <div id="cveDetails" class="panel"><header><h2>CVE Details &amp; Exploitation Signals</h2></header><div class="content" id="cveContent"><div class="meta">Enter a CVE or Vendor/Product and click Run.</div></div></div>
-      <div id="exploitationWatch" class="panel"><header><h2>CVE & Exploitation Watcher</h2><button class="btn" id="watchRefresh">Refresh</button></header><div class="content" id="watchContent"><div class="meta">Loading feeds…</div></div></div>
-      <div id="vulncheckMonitor" class="panel"><header><h2>Recent VulnCheck KEV (last 10 days)</h2><button class="btn" id="vulncheckRefresh">Refresh</button></header><div class="content" id="vulncheckContent"><div class="meta">Loading...</div></div></div>
-
-      
-      
-      <div id="notableSources" class="panel"><header><h2>Notable Sources &amp; References</h2></header><div class="content" id="sourcesContent"><div class="meta">Will appear after running a CVE.</div></div></div>
-      <div id="relevantSearches" class="panel"><header><h2>Relevant Searches &amp; Monitoring</h2></header><div class="content" id="searchLinks"><div class="meta">Enter a term above and click Run to populate links.</div></div></div>
-    </main>
-    <div id="toast"></div>
-    <div id="loading">Loading data...</div>
-    <!-- Attack Visualizer Modal -->
-    <div id="attackModal"><div class="prev-content"><div id="attackGraph"></div><button id="closeModal" class="btn">Close Visualizer</button></div></div>
-    <!-- Prevalence Modal -->
-    <div id="prevalenceModal"><div class="prev-content"><div class="prev-header"><h3 id="prevTitle">Prevalence</h3><button class="btn" onclick="document.getElementById('prevalenceModal').style.display='none'">Close</button></div><div id="prevBody"></div></div></div>
-    <!-- AI Analysis Results Modal -->
-    <div id="analysisModal" role="dialog" aria-modal="true" aria-labelledby="analysisTitle" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); z-index:1450; align-items:center; justify-content:center;">
-      <div style="background: var(--panel-light); color: inherit; border:1px solid var(--border-light); border-radius:12px; width:92%; max-width:860px; max-height:85vh; overflow:auto; padding:18px;">
-        <h3 id="analysisTitle" style="margin-top:0">AI Analysis</h3>
-        <div id="analysisStatus" class="meta" style="margin-bottom:12px">Preparing analysis…</div>
-        <div id="analysisBody" style="white-space:pre-wrap; font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Arial; border:1px solid var(--border-light); border-radius:8px; padding:12px; min-height:160px;"></div>
-        <div style="display:flex; gap:12px; margin-top:12px; flex-wrap:wrap;">
-          <button id="analysisCopy" class="btn">Copy</button>
-          <button id="analysisSave" class="btn">Download .md</button>
-          <button id="analysisCancel" class="btn">Cancel</button>
-          <button id="analysisClose" class="btn">Close</button>
-        </div>
-      </div>
-    </div>
-  </section>
-  <section id="tab2">
-    <div class="feeds-header">
-      <h1>Live Cybersecurity Exploits Monitor</h1>
-      <div style="margin: 12px 0;"><button class="btn" onclick="displayFeeds()">Refresh Feeds</button></div>
-    </div>
-    <div id="feed-container" class="feed-container"></div>
-  </section>
-</div>
 <script>
 /* ---------- Origins & Endpoints ---------- */
 const IS_FILE_ORIGIN = location.protocol === 'file:';
@@ -1060,30 +1025,6 @@ async function runSearch() {
         });
       }
     }
-
-    const cvssHtml = metrics.map(m => {
-      const sev = (m.score < 4 ? "Low" : m.score < 7 ? "Medium" : m.score < 9 ? "High" : "Critical");
-      const cls = (m.score < 4 ? "low" : m.score < 7 ? "medium" : m.score < 9 ? "high" : "critical");
-      return `
-        <div class="item">
-          <div class="title">CVSS v${m.version} – ${m.score} <span class="chip ${cls}">${sev}</span></div>
-          <div class="meta">Source: ${m.source}<br>Vector: ${m.vector || "N/A"}</div>
-        </div>`;
-    }).join("") || '<div class="meta">No CVSS metrics available</div>';
-
-    const inVulncheck = __lastVulncheckRecent.includes(input);
-    const quickLinksHtml = [
-      linkRow(`https://nvd.nist.gov/vuln/detail/${input}`, "NVD Detail Page"),
-      linkRow(`https://cve.mitre.org/cgi-bin/cvename.cgi?name=${input}`, "MITRE CVE Record"),
-      linkRow(`https://cveawg.mitre.org/api/cve/${input}`, "CVE Services JSON"),
-      linkRow(`https://web.archive.org/`, "Archive.org (Wayback Machine)")
-    ].join("<br>");
-
-    // Always show relevant searches
-    renderRelevantSearches(input);
-    if (String(ransomwareTag).toLowerCase() === 'known') renderRansomwareSearches(input);
-    const cweHtml = buildCweHtml(cveData, nvdJson);
-
     // Context for AI Analysis
     const referencesGrouped = Object.keys(grouped).map(host => ({
       host,
@@ -1122,38 +1063,7 @@ async function runSearch() {
         <div class="title">EPSS Metrics</div>
         <table><tr><th>Status</th><td>No EPSS data available</td></tr></table>
       </div>`;
-    // References (by host) from CNA
-    const refs = (cna.references || []).filter(r => r.url && r.url.startsWith('https://'));
-    const grouped = refs.reduce((acc, r) => {
-      let host;
-      try { host = new URL(r.url).hostname.replace(/^www\./,''); } catch { host = "link"; }
-      (acc[host] ||= []).push(r);
-      return acc;
-    }, {});
-    const refsHtml = Object.keys(grouped).map(host => {
-      const list = grouped[host];
-      return `<div class="item"><div class="title">${host} (${list.length})</div><div class="meta">${ list.map(r => linkRow(r.url, r.name || r.url)).join("") }</div></div>`;
-    }).join("") || '<div class="meta">No references found.</div>';
-    document.getElementById("sourcesContent").innerHTML = refsHtml;
     // CVSS metrics (CNA + NVD)
-    const metrics = [];
-    (cna.metrics || []).forEach(m => {
-      if (m.cvssV3_1) metrics.push({score:m.cvssV3_1.baseScore, version:"3.1", source:`CVE.org - CNA (${cnaName})`, vector:m.cvssV3_1.vectorString});
-      if (m.cvssV4_0) metrics.push({score:m.cvssV4_0.baseScore, version:"4.0", source:`CVE.org - CNA (${cnaName})`, vector:m.cvssV4_0.vectorString});
-    });
-    let nvdJson = null;
-    if (nvdRes.ok) {
-      nvdJson = await nvdRes.json();
-      const nvdCve = nvdJson.vulnerabilities?.[0]?.cve;
-      if (nvdCve?.metrics) {
-        ["cvssMetricV31","cvssMetricV40"].forEach(key => {
-          (nvdCve.metrics[key] || []).forEach(m => {
-            const data = m.cvssData;
-            if (data) metrics.push({ score:data.baseScore, version: key==="cvssMetricV31"?"3.1":"4.0", source:"NVD - NIST", vector:data.vectorString });
-          });
-        });
-      }
-    }
     const cvssHtml = metrics.map(m => {
       const sev = (m.score<4?"Low":m.score<7?"Medium":m.score<9?"High":"Critical");
       const cls = (m.score<4?"low":m.score<7?"medium":m.score<9?"high":"critical");
@@ -1170,27 +1080,7 @@ const quickLinksHtml = [
     renderRelevantSearches(input);
     if (String(ransomwareTag).toLowerCase()==='known') renderRansomwareSearches(input);
     const cweHtml = buildCweHtml(cveData, nvdJson);
-    // Context for AI Analysis
-    const referencesGrouped = Object.keys(grouped).map(host => ({
-      host,
-      links: grouped[host].map(r => ({ name: r.name || r.url, url: r.url }))
-    }));
-    const cvssForPrompt = metrics.map(m => ({ version: m.version, score: m.score, source: m.source, vector: m.vector }));
-    const cwesForPrompt = (cna?.problemTypes || [])
-      .flatMap(pt => (pt.descriptions || []).map(d => ({ id: d?.cweId || d?.id || 'Unknown', desc: d?.description || d?.value || '', assigner: cna?.providerMetadata?.shortName || 'CNA' })));
-    __lastAnalysisContext = {
-      input,
-      isCVE: true,
-      cnaName,
-      description: desc,
-      kevYes,
-      ransomwareTag,
-      epss: epssData ? { score: Number(epssData.epss), percentile: Number(epssData.percentile) } : null,
-      cvss: cvssForPrompt,
-      cwes: cwesForPrompt,
-      referencesGrouped
-    };
-    // Paint CVE panel
+        // Paint CVE panel
     const cveContent = document.getElementById("cveContent");
     cveContent.innerHTML = `
       <div class="item"><div class="title">${input} · CNA: ${cnaName}</div></div>
@@ -1354,8 +1244,6 @@ async function displayFeeds() {
     }
   }
 }
-// Helper to test CVE format
-function isCVE(str){ return /^CVE-\d{4}-\d{4,}$/i.test(str); }
 // Main CVE search flow
 /* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
 ;(() => {
@@ -1658,21 +1546,16 @@ document.addEventListener("DOMContentLoaded", () => {
   initInlineAnalysis();
   bindSearchHandlers();
     
-  document.getElementById("go").addEventListener("click", handleSearch);
-  document.getElementById("cve").addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); handleSearch(); }
-  });
   document.getElementById("closeModal")?.addEventListener("click", () => {
   document.getElementById("attackModal").style.display = "none";
   });
   document.getElementById('watchRefresh')?.addEventListener('click', loadExploitationWatch);
   document.getElementById('vulncheckRefresh')?.addEventListener('click', loadVulnCheck);
-  });
   // ✅ Auto-refresh intervals
   setInterval(loadExploitationWatch, 15 * 60 * 1000); // every 15 minutes
   setInterval(loadVulnCheck, 60 * 60 * 1000);         // every hour
   setInterval(refreshFeedsOnTimer, 10 * 60 * 1000);
-});
+});  
 </script>
 </body>
 </html>
