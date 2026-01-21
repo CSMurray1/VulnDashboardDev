@@ -1334,10 +1334,8 @@ async function displayFeeds() {
   }
   function isKev(cve){ return kevSet && kevSet.has(cve.toUpperCase()); }
   function kevInfo(cve){ return kevMap && kevMap[cve.toUpperCase()] || null; }
-  const btn = document.createElement('button'); btn.id='watcherBtn'; btn.className='btn'; btn.textContent='CVE Watcher';
   
-
-// Safely mount overlay + notification UI when <body> exists
+  // Safely mount overlay + notification UI when <body> exists
 function mountWatcherUI() {
   // Ensure the Watcher button is visible in the header
   ensureWatcherButton();
