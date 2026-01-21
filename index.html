@@ -518,6 +518,77 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
 </style>
 </head>
 <body>
+<nav>
+  <button class="active" onclick="switchTab(0)">CVE Lookup</button>
+  <button onclick="switchTab(1)">Feeds</button>
+</nav>
+<button class="mode" onclick="toggleMode()">Dark Mode</button>
+<div class="tabs">
+  <section id="tab1" class="active">
+    <header class="cve-header">
+      <h1>Vulnerability Dashboard</h1>
+      <input id="cve" placeholder="Enter CVE or Vendor/Product">
+      <button id="go" class="btn">Run</button>
+      <button id="clearCve" class="btn">Clear</button>
+      <button id="aiAnalysis" class="btn">AI Analysis</button>
+    </header>
+    <main class="cve-main">
+      <div id="cveDetails" class="panel">
+        <header><h2>CVE Details</h2></header>
+        <div class="content" id="cveContent"><div class="meta">Enter a CVE or Vendor/Product and click Run.</div></div>
+      </div>
+      <div id="exploitationWatch" class="panel">
+        <header><h2>Exploitation Watch (Last 10 Days)</h2><button id="watchRefresh" class="btn">Refresh</button></header>
+        <div id="watchContent" class="content"><div class="meta">Loading feeds…</div></div>
+      </div>
+      <div id="vulncheckMonitor" class="panel">
+        <header><h2>VulnCheck KEV Recent Additions</h2><button id="vulncheckRefresh" class="btn">Refresh</button></header>
+        <div id="vulncheckContent" class="content"><div class="meta">Loading data…</div></div>
+      </div>
+      <div id="notableSources" class="panel">
+        <header><h2>Notable Sources & References</h2></header>
+        <div id="sourcesContent" class="content"><div class="meta">Will appear after running a CVE.</div></div>
+      </div>
+      <div id="relevantSearches" class="panel">
+        <header><h2>Relevant Searches & PoCs</h2></header>
+        <div id="searchLinks" class="content"><div class="meta">Enter a term above and click Run to populate links.</div></div>
+      </div>
+    </main>
+  </section>
+  <section id="tab2">
+    <h1 class="feeds-header">Security Feeds</h1>
+    <div id="feed-container" class="feed-container"></div>
+  </section>
+</div>
+<div id="toast"></div>
+<div id="loading">Loading...</div>
+<div id="attackModal" style="display:none;">
+  <button id="closeModal" class="btn">Close</button>
+  <div id="attackGraph"></div>
+</div>
+<div id="prevalenceModal" style="display:none;">
+  <div class="prev-content">
+    <div class="prev-header">
+      <h2 id="prevTitle">Prevalence</h2>
+      <button id="prevClose" class="btn">Close</button>
+    </div>
+    <div id="prevBody"></div>
+  </div>
+</div>
+<div id="analysisModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.65); z-index:1250; align-items:center; justify-content:center;">
+  <div style="background:var(--panel-light); padding:24px; border-radius:12px; max-width:800px; width:90%; max-height:80vh; overflow:auto;">
+    <h3>AI Analysis</h3>
+    <div id="analysisStatus">Preparing...</div>
+    <pre id="analysisBody" style="white-space:pre-wrap; background:var(--input-bg-dark); padding:12px; border:1px solid var(--border-light); border-radius:8px; max-height:60vh; overflow:auto;"></pre>
+    <div style="display:flex; gap:12px; margin-top:16px;">
+      <button id="analysisCopy" class="btn">Copy</button>
+      <button id="analysisSave" class="btn">Save MD</button>
+      <button id="analysisCancel" class="btn">Cancel</button>
+      <button id="analysisClose" class="btn">Close</button>
+    </div>
+  </div>
+</div>
+<div id="watcherNotify"></div>
 <script>
 /* ---------- Origins & Endpoints ---------- */
 const IS_FILE_ORIGIN = location.protocol === 'file:';
