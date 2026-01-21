@@ -1248,13 +1248,11 @@ async function displayFeeds() {
 /* ---------- CVE Watcher (IIFE, KEV badge) ---------- */
 
 ;(() => {
-  
-let notif = null;
-let overlay = null;
+  let notif = null;
+  let overlay = null;
   const btn = document.createElement('button');
   btn.id = 'watcherBtn';
   btn.className = 'btn';
-  btn.textContent = 'CVE Watcher';
 
   // If loaded via file://, attach the button and exit
   if (IS_FILE_ORIGIN) {
@@ -1278,7 +1276,6 @@ let overlay = null;
     return; // skip the rest of the watcher when on file origin
   }
 
-  // Normal path: helper to attach the button in header
   function ensureWatcherButton() {
     const hdr = document.querySelector('header.cve-header');
     if (!hdr) {
@@ -1290,8 +1287,52 @@ let overlay = null;
     } else {
       hdr.appendChild(btn);
     }
-  }
+
   
+  function ensureOverlay() {
+    if (overlay) return;                       // already created
+    overlay = document.createElement('div');   // <-- assign, DO NOT 'const'/'let' here
+    overlay.id = 'watcher';
+    Object.assign(overlay.style, {
+      display:'none', position:'fixed', top:'0', left:'0', width:'100%', height:'100%',
+      background:'rgba(0,0,0,0.7)', alignItems:'center', justifyContent:'center', zIndex:'1300'
+    });
+    overlay.innerHTML = `
+      <div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="watcherTitle">
+        <h2 id="watcherTitle">CVE Watcher</h2>
+        <label>CVEs to watch (comma or newline separated)<br><textarea id="watcherList" rows="6" placeholder="CVE-2024-12345\nCVE-2023-99999"></textarea></label>
+        <label>Poll interval (minutes, default 30)<br><input id="watcherInterval" type="number" min="5" value="30"></label>
+        <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
+          <button id="watcherSave" class="btn">Save &amp; Start</button>
+          <button id="watcherStop" class="btn">Stop</button>
+          <button id="watcherCheck" class="btn">Check now</button>
+          <button id="watcherReset" class="btn">Reset dedupe</button>
+          <button id="watcherKev" class="btn">Refresh KEV</button>
+          <button id="watcherClose" class="btn">Close</button>
+        </div>
+        <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    // Now it exists—safe to attach listeners
+    overlay.addEventListener('click', (e) => { if (e.target.id === 'watcher') overlay.style.display = 'none'; });
+    overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display = 'none');
+    overlay.querySelector('#watcherSave').addEventListener('click', () => {
+      const list = parseList(document.getElementById('watcherList').value);
+      localStorage.setItem(STORAGE_KEY, list.join('\n'));
+      const interval = Math.max(5, Number(document.getElementById('watcherInterval').value) || 30);
+      localStorage.setItem(INTERVAL_KEY, String(interval));
+      overlay.style.display = 'none';
+      if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length !== 1 ? 's' : ''}; ${interval} min)`);
+      start();
+    });
+    overlay.querySelector('#watcherStop').addEventListener('click', () => { stop(); overlay.style.display = 'none'; if (typeof toast === 'function') toast('CVE Watcher stopped'); });
+    overlay.querySelector('#watcherCheck').addEventListener('click', async () => { if (typeof toast === 'function') toast('Checking now…'); await poll(); if (typeof toast === 'function') toast('Check complete'); });
+    overlay.querySelector('#watcherReset').addEventListener('click', () => { notified.clear(); localStorage.removeItem(NOTIFIED_KEY); if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check'); });
+    overlay.querySelector('#watcherKev').addEventListener('click', async () => { if (typeof toast === 'function') toast('Refreshing KEV…'); await refreshKev(); if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`); });
+  }
+
+    
   const STORAGE_KEY = 'cveWatcher.list';
   const INTERVAL_KEY = 'cveWatcher.interval';
   const NOTIFIED_KEY = 'cveWatcher.notified';
@@ -1333,30 +1374,30 @@ let overlay = null;
   }
   function isKev(cve){ return kevSet && kevSet.has(cve.toUpperCase()); }
   function kevInfo(cve){ return kevMap && kevMap[cve.toUpperCase()] || null; }
-  
-  // Safely mount overlay + notification UI when <body> exists
-function mountWatcherUI() {
-  // Ensure the Watcher button is visible in the header
-  ensureWatcherButton();
 
-  // Overlay actions
-  overlay.addEventListener('click', (e) => { if (e.target.id === 'watcher') overlay.style.display = 'none'; });
-  overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display = 'none');
-  overlay.querySelector('#watcherSave').addEventListener('click', () => {
-    const list = parseList(document.getElementById('watcherList').value);
-    localStorage.setItem(STORAGE_KEY, list.join('\n'));
-    const interval = Math.max(5, Number(document.getElementById('watcherInterval').value) || 30);
-    localStorage.setItem(INTERVAL_KEY, String(interval));
-    overlay.style.display = 'none';
-    if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length !== 1 ? 's' : ''}; ${interval} min)`);
-    start();
-  });
-  overlay.querySelector('#watcherStop').addEventListener('click', () => { stop(); overlay.style.display = 'none'; if (typeof toast === 'function') toast('CVE Watcher stopped'); });
-  overlay.querySelector('#watcherCheck').addEventListener('click', async () => { if (typeof toast === 'function') toast('Checking now…'); await poll(); if (typeof toast === 'function') toast('Check complete'); });
-  overlay.querySelector('#watcherReset').addEventListener('click', () => { notified.clear(); localStorage.removeItem(NOTIFIED_KEY); if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check'); });
-  overlay.querySelector('#watcherKev').addEventListener('click', async () => { if (typeof toast === 'function') toast('Refreshing KEV…'); await refreshKev(); if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`); });
+  function mountWatcherUI() {
+    ensureWatcherButton();
+    ensureOverlay();                            // <- make sure overlay exists before using it
 
-  // Button toggles overlay
+    // Button toggles overlay
+    btn.addEventListener('click', () => {
+      document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
+      document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
+      overlay.style.display = 'flex';
+    });
+
+    // Autostart if we have saved CVEs
+    if (parseList(localStorage.getItem(STORAGE_KEY)).length) {
+      start();
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mountWatcherUI);
+  } else {
+    mountWatcherUI();
+
+   // Button toggles overlay
   btn.addEventListener('click', () => {
     document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
     document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
@@ -1375,30 +1416,6 @@ if (document.readyState === 'loading') {
 } else {
   mountWatcherUI();
 }
-  
-  function ensureWatcherButton(){
-    let hdr = document.querySelector('header.cve-header');
-    if (!hdr){ btn.style.position = 'fixed'; btn.style.top = '60px'; btn.style.right = '12px'; btn.style.zIndex = '1500'; document.body.appendChild(btn); }
-    else { hdr.appendChild(btn); }
-  }
-  if (document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', ensureWatcherButton); } else { ensureWatcherButton(); }
-  const overlay = document.createElement('div'); overlay.id='watcher';
-  Object.assign(overlay.style, { display:'none', position:'fixed', top:'0', left:'0', width:'100%', height:'100%', background:'rgba(0,0,0,0.7)', alignItems:'center', justifyContent:'center', zIndex:'1300' });
-  overlay.innerHTML = `
-    <div class="settings-content" role="dialog" aria-modal="true" aria-labelledby="watcherTitle">
-      <h2 id="watcherTitle">CVE Watcher</h2>
-      <label>CVEs to watch (comma or newline separated)<br><textarea id="watcherList" rows="6" placeholder="CVE-2024-12345\nCVE-2023-99999"></textarea></label>
-      <label>Poll interval (minutes, default 30)<br><input id="watcherInterval" type="number" min="5" value="30"></label>
-      <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap">
-        <button id="watcherSave" class="btn">Save &amp; Start</button>
-        <button id="watcherStop" class="btn">Stop</button>
-        <button id="watcherCheck" class="btn">Check now</button>
-        <button id="watcherReset" class="btn">Reset dedupe</button>
-        <button id="watcherKev" class="btn">Refresh KEV</button>
-        <button id="watcherClose" class="btn">Close</button>
-      </div>
-      <p class="meta">Stored locally in your browser (localStorage). Notifications appear on the main view.<br>Dedupe keys persist across sessions—use “Reset dedupe” to re-show hits.<br>KEV badge is informational.</p>
-    </div>`;
   document.body.appendChild(overlay);
   
 if (!notif) {
@@ -1512,26 +1529,6 @@ function showNotification(items) {
   let timer = null;
   function start(){ const minutes = Math.max(5, Number(localStorage.getItem(INTERVAL_KEY) || 30)); if (timer) clearInterval(timer); timer = setInterval(poll, minutes*60*1000); poll(); }
   function stop(){ if (timer) { clearInterval(timer); timer=null; } }
-  btn.addEventListener('click', ()=>{
-    document.getElementById('watcherList').value = (localStorage.getItem(STORAGE_KEY) || '');
-    document.getElementById('watcherInterval').value = (localStorage.getItem(INTERVAL_KEY) || 30);
-    overlay.style.display='flex';
-  });
-  overlay.querySelector('#watcherClose').addEventListener('click', () => overlay.style.display='none');
-  overlay.querySelector('#watcherSave').addEventListener('click', ()=>{
-    const list = parseList(document.getElementById('watcherList').value);
-    localStorage.setItem(STORAGE_KEY, list.join('\n'));
-    const interval = Math.max(5, Number(document.getElementById('watcherInterval').value)||30);
-    localStorage.setItem(INTERVAL_KEY, String(interval));
-    overlay.style.display='none';
-    if (typeof toast === 'function') toast(`CVE Watcher saved (${list.length} CVE${list.length!==1?'s':''}; ${interval} min)`);
-    start();
-  });
-  overlay.querySelector('#watcherStop').addEventListener('click', ()=>{ stop(); overlay.style.display='none'; if (typeof toast === 'function') toast('CVE Watcher stopped'); });
-  overlay.querySelector('#watcherCheck').addEventListener('click', async ()=>{ if (typeof toast === 'function') toast('Checking now…'); await poll(); if (typeof toast === 'function') toast('Check complete'); });
-  overlay.querySelector('#watcherReset').addEventListener('click', ()=>{ notified.clear(); localStorage.removeItem(NOTIFIED_KEY); if (typeof toast === 'function') toast('CVE Watcher dedupe reset — hits will re-show on next check'); });
-  overlay.querySelector('#watcherKev').addEventListener('click', async ()=>{ if (typeof toast === 'function') toast('Refreshing KEV…'); await refreshKev(); if (typeof toast === 'function') toast(`KEV refreshed (${kevSet.size} entries)`); });
-  if (parseList(localStorage.getItem(STORAGE_KEY)).length){ start(); }
 })();
 /* ---------- Tabs ---------- */
 function switchTab(tabIndex) {
