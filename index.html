@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Vulnerability Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>ðŸª²</text></svg>'" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>%F0%9F%AA%B2</text></svg>'" />
 <!-- ===== Global Styles ===== -->
 <style>
 
@@ -560,11 +560,11 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
       </div>
       <div id="exploitationWatch" class="panel">
         <header><h2>Exploitation Watch (Last 10 Days)</h2><button id="watchRefresh" class="btn">Refresh</button></header>
-        <div id="watchContent" class="content"><div class="meta">Loading feedsâ€¦</div></div>
+        <div id="watchContent" class="content"><div class="meta">Loading feeds¦</div></div>
       </div>
       <div id="vulncheckMonitor" class="panel">
         <header><h2>VulnCheck KEV Recent Additions</h2><button id="vulncheckRefresh" class="btn">Refresh</button></header>
-        <div id="vulncheckContent" class="content"><div class="meta">Loading dataâ€¦</div></div>
+        <div id="vulncheckContent" class="content"><div class="meta">Loading data¦</div></div>
       </div>
       <div id="notableSources" class="panel">
         <header><h2>Notable Sources & References</h2></header>
@@ -704,8 +704,8 @@ function buildAnalysisPrompt(ctx) {
   }
   const { input, isCVE, cnaName, description, kevYes, ransomwareTag, epss, cvss = [], cwes = [], referencesGrouped = [] } = ctx;
   const cvssLines = cvss.length ? cvss.map(m => `- CVSS v${m.version}: ${m.score} (${m.source})${m.vector ? ` | ${m.vector}` : ''}`).join('\n') : '- CVSS: (none)';
-  const cweLines = cwes.length ? cwes.map(c => `- ${c.id || 'Unknown'} â€” ${c.desc || 'No description'} (Assigner: ${c.assigner || 'Unknown'})`).join('\n') : '- CWE: (none)';
-  const refLines = referencesGrouped.length ? referencesGrouped.map(g => { const links = (g.links || []).slice(0, 4).map(r => ` â€¢ ${r.name || r.url}: ${r.url}`).join('\n'); return `- ${g.host}\n${links}`; }).join('\n') : '- References: (none)';
+  const cweLines = cwes.length ? cwes.map(c => `- ${c.id || 'Unknown'} ” ${c.desc || 'No description'} (Assigner: ${c.assigner || 'Unknown'})`).join('\n') : '- CWE: (none)';
+  const refLines = referencesGrouped.length ? referencesGrouped.map(g => { const links = (g.links || []).slice(0, 4).map(r => ` ¢ ${r.name || r.url}: ${r.url}`).join('\n'); return `- ${g.host}\n${links}`; }).join('\n') : '- References: (none)';
   const epssLine = (epss && typeof epss.score === 'number') ? `EPSS: ${epss.score.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day), Percentile: ${(epss.percentile * 100).toFixed(1)}%` : `EPSS: (no data)`;
   const kevLine = kevYes ? `CISA KEV: Yes (Ransomware: ${String(ransomwareTag || 'Unknown')})` : `CISA KEV: No`;
   return [
@@ -742,8 +742,8 @@ function buildAnalysisPrompt(ctx) {
 function generateStaticAnalysis(ctx) {
   const { input, isCVE, cnaName, description, kevYes, ransomwareTag, epss, cvss = [], cwes = [] } = ctx || {};
   const cvssText = cvss.length ? cvss.map(m => `- **CVSS v${m.version}**: ${m.score} _(source: ${m.source}; vector: ${m.vector || 'N/A'})_`).join('\n') : '- **CVSS**: No metrics available';
-  const cweText = cwes.length ? cwes.map(c => `- **${c.id || 'Unknown'}** â€” ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n') : '- **CWE**: No data';
-  const epssText = epss ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) â€” Percentile ${(epss.percentile * 100).toFixed(1)}%` : '- **EPSS**: No data';
+  const cweText = cwes.length ? cwes.map(c => `- **${c.id || 'Unknown'}** ” ${c.desc || 'No description'} _(Assigner: ${c.assigner || 'Unknown'})_`).join('\n') : '- **CWE**: No data';
+  const epssText = epss ? `- **EPSS**: ${epss.score?.toFixed(4)} (~${(epss.score * 100).toFixed(2)}% 30-day) ” Percentile ${(epss.percentile * 100).toFixed(1)}%` : '- **EPSS**: No data';
   const kevText = kevYes ? `- **CISA KEV**: Yes${String(ransomwareTag).toLowerCase() === 'known' ? ' (Known ransomware campaign use)' : ''}` : '- **CISA KEV**: No';
   return [
     `# ${isCVE ? input : `Analysis: ${input}`}`,
@@ -763,7 +763,7 @@ function generateStaticAnalysis(ctx) {
     `## Impact & Blast Radius`,
     `- Impact level per CVSS:`,
     `${cvssText}`,
-    `- Key ATT&CK techniques: **Txxx (unknown)** â€” map actual artifacts from detections once logs are available.`,
+    `- Key ATT&CK techniques: **Txxx (unknown)** ” map actual artifacts from detections once logs are available.`,
     ``,
     `## Detection Ideas`,
     `- Review application/server logs around suspected vulnerable components.`,
@@ -787,7 +787,7 @@ function generateStaticAnalysis(ctx) {
 /* ---------- AI Analysis (Edge â†’ Gemini â†’ Enterprise â†’ Static) ---------- */
 let __aiSession = null;
 let __aiAbort = null;
-function openAnalysisModal() { const m = document.getElementById('analysisModal'); const b = document.getElementById('analysisBody'); const s = document.getElementById('analysisStatus'); if (!m || !b || !s) return; b.textContent = ''; s.textContent = 'Preparing analysisâ€¦'; m.style.display = 'flex'; }
+function openAnalysisModal() { const m = document.getElementById('analysisModal'); const b = document.getElementById('analysisBody'); const s = document.getElementById('analysisStatus'); if (!m || !b || !s) return; b.textContent = ''; s.textContent = 'Preparing analysis¦'; m.style.display = 'flex'; }
 function closeAnalysisModal() { const m = document.getElementById('analysisModal'); if (m) m.style.display = 'none'; cancelAnalysis(); }
 function cancelAnalysis() { try { if (__aiAbort) { __aiAbort.abort(); __aiAbort = null; } if (__aiSession?.destroy) { __aiSession.destroy(); } } catch {} __aiSession = null; }
 function downloadAnalysis() { const text = document.getElementById('analysisBody')?.textContent || ''; const blob = new Blob([text], { type: 'text/markdown;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'analysis.md'; a.click(); URL.revokeObjectURL(a.href); }
@@ -795,7 +795,7 @@ async function runLocalAnalysis(prompt) {
   const body = document.getElementById('analysisBody'); const status = document.getElementById('analysisStatus');
   if (!('ai' in window) || !window.ai?.createTextSession) { throw new Error('Edge Prompt API unavailable'); }
   __aiSession = await window.ai.createTextSession({ systemPrompt: 'You are a security analyst. Be concise, technical, and explicitly note unknowns.', temperature: 0.2, topK: 40 });
-  status.textContent = 'Generating locally (Edge)â€¦';
+  status.textContent = 'Generating locally (Edge)¦';
   const supportsStreaming = !!__aiSession.promptStreaming;
   __aiAbort = new AbortController();
   if (supportsStreaming) { for await (const chunk of __aiSession.promptStreaming(prompt, { signal: __aiAbort.signal })) { body.textContent += chunk; } }
@@ -866,7 +866,7 @@ function initInlineAnalysis() {
   const saveBtn = document.getElementById('analysisSave'); const cancelBtn= document.getElementById('analysisCancel');
   const closeBtn = document.getElementById('analysisClose'); const modal = document.getElementById('analysisModal');
   if (btn) btn.onclick = runAiAnalysis;
-  copyBtn?.addEventListener('click', async () => { try { const text = document.getElementById('analysisBody')?.textContent || ''; await navigator.clipboard.writeText(text); toast('Analysis copied to clipboard'); } catch { toast('Copy failed â€” select and press Ctrl+C'); } });
+  copyBtn?.addEventListener('click', async () => { try { const text = document.getElementById('analysisBody')?.textContent || ''; await navigator.clipboard.writeText(text); toast('Analysis copied to clipboard'); } catch { toast('Copy failed ” select and press Ctrl+C'); } });
   saveBtn?.addEventListener('click', downloadAnalysis);
   cancelBtn?.addEventListener('click', () => { cancelAnalysis(); toast('Analysis cancelled'); });
   closeBtn?.addEventListener('click', closeAnalysisModal);
@@ -1035,7 +1035,7 @@ async function runSearch() {
     const kevDateRaw = getKevAddedDate(kevEntry, input);
     const kevAddedPretty = kevDateRaw ? new Date(kevDateRaw).toLocaleDateString() : '';
     const kevLabel = kevYes
-      ? `CISA KEV: Yes${kevAddedPretty ? ` â€” Added: ${kevAddedPretty}` : ''}`
+      ? `CISA KEV: Yes${kevAddedPretty ? ` ” Added: ${kevAddedPretty}` : ''}`
       : 'CISA KEV: No';
 
     // CNA record
@@ -1167,7 +1167,7 @@ try {
         .map(d => ({ id: d?.cweId || d?.id || 'Unknown', desc: d?.description || d?.value || '', assigner: cna?.providerMetadata?.shortName || 'CNA' })));
 
 
-// EPSS block â€” fetch first, then build context
+// EPSS block ” fetch first, then build context
 const epssData = epssRes.ok ? (await epssRes.json()).data?.[0] : null;
 const epssForCtx = epssData ? {
   score: Number(epssData.epss),
@@ -1206,7 +1206,7 @@ __lastAnalysisContext = {
     const cvssHtml = metrics.map(m => {
       const sev = (m.score<4?"Low":m.score<7?"Medium":m.score<9?"High":"Critical");
       const cls = (m.score<4?"low":m.score<7?"medium":m.score<9?"high":"critical");
-      return `<div class="item"><div class="title">CVSS v${m.version} â€“ ${m.score} <span class="chip ${cls}">${sev}</span></div><div class="meta">Source: ${m.source}<br>Vector: ${m.vector || "N/A"}</div></div>`;
+      return `<div class="item"><div class="title">CVSS v${m.version} “ ${m.score} <span class="chip ${cls}">${sev}</span></div><div class="meta">Source: ${m.source}<br>Vector: ${m.vector || "N/A"}</div></div>`;
     }).join("") || '<div class="meta">No CVSS metrics available</div>';
     const inVulncheck = __lastVulncheckRecent.includes(input);
 const quickLinksHtml = [
@@ -1296,7 +1296,7 @@ async function loadExploitationWatch() {
       });
     }catch{}
   }
-  document.getElementById("watchContent").innerHTML = '<div class="meta">Loading feedsâ€¦</div>';
+  document.getElementById("watchContent").innerHTML = '<div class="meta">Loading feeds¦</div>';
   await Promise.all(sources.map(s=>collectRss(s.url,s.name)));
   out.sort((a,b)=> new Date(b.date||0) - new Date(a.date||0));
   const html = out.map(r=>`<div class="item"><div class="title">${linkRow(r.link, r.title)}</div><div class="meta">${r.source}${r.date ? ' Â· ' + r.date : ''}</div></div>`).join("");
@@ -1312,7 +1312,7 @@ async function loadExploitationWatch() {
 }
 /* ---------- Prevalence ---------- */
 function renderPrevalenceSignals(keyword){ document.getElementById("prevBody").innerHTML = `<div class="meta">Prevalence view not enabled in this build.</div>`; }
-function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence â€“ ${keyword}`; renderPrevalenceSignals(keyword); }
+function openPrevalence(keyword){ const modal=document.getElementById("prevalenceModal"); if(!modal) return toast("Prevalence modal is not available."); modal.style.display="flex"; document.getElementById("prevTitle").textContent=`Prevalence “ ${keyword}`; renderPrevalenceSignals(keyword); }
 /* ---------- Relevant Searches ---------- */
 function renderRelevantSearches(term){
   const q = encodeURIComponent(term); const isCve = /^CVE-\d{4}-\d{4,}$/i.test(term);
@@ -1330,10 +1330,10 @@ function renderRelevantSearches(term){
 function renderRansomwareSearches(cveId){
   const q = encodeURIComponent(cveId + " ransomware");
   const rows = [
-    linkRow(`https://x.com/search?q=${q}&f=live`, "X (Twitter) â€” CVE + Ransomware"),
-    linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer â€” CVE + Ransomware"),
-    linkRow(`https://www.google.com/search?q=${q}`, "Google â€” CVE + Ransomware"),
-    linkRow(`https://news.google.com/search?q=${q}`, "Google News â€” CVE + Ransomware")
+    linkRow(`https://x.com/search?q=${q}&f=live`, "X (Twitter) ” CVE + Ransomware"),
+    linkRow(`https://www.bleepingcomputer.com/search/?q=${q}`, "BleepingComputer ” CVE + Ransomware"),
+    linkRow(`https://www.google.com/search?q=${q}`, "Google ” CVE + Ransomware"),
+    linkRow(`https://news.google.com/search?q=${q}`, "Google News ” CVE + Ransomware")
   ].join("<br>");
   const container = document.getElementById("searchLinks");
   container.insertAdjacentHTML('beforeend', `<div class="item"><div class="title">Ransomware-Focused Searches</div><div class="meta">${rows}</div></div>`);
@@ -1468,9 +1468,9 @@ async function displayFeeds() {
       start();
     });
     overlay.querySelector('#watcherStop').addEventListener('click', () => { stop(); overlay.style.display = 'none'; toast && toast('CVE Watcher stopped'); });
-    overlay.querySelector('#watcherCheck').addEventListener('click', async () => { toast && toast('Checking nowâ€¦'); await poll(); toast && toast('Check complete'); });
+    overlay.querySelector('#watcherCheck').addEventListener('click', async () => { toast && toast('Checking now¦'); await poll(); toast && toast('Check complete'); });
     overlay.querySelector('#watcherReset').addEventListener('click', () => { notified.clear(); localStorage.removeItem('cveWatcher.notified'); toast && toast('CVE Watcher dedupe reset'); });
-    overlay.querySelector('#watcherKev').addEventListener('click', async () => { toast && toast('Refreshing KEVâ€¦'); await refreshKev(); toast && toast(`KEV refreshed (${kevSet.size} entries)`); });
+    overlay.querySelector('#watcherKev').addEventListener('click', async () => { toast && toast('Refreshing KEV¦'); await refreshKev(); toast && toast(`KEV refreshed (${kevSet.size} entries)`); });
   }
 
   function mountWatcherUI() {
@@ -1563,7 +1563,7 @@ async function displayFeeds() {
       { name:"Exploit Database", url:"https://www.exploit-db.com/rss.xml" },
       { name:"Unit42 (Palo Alto)", url:"https://unit42.paloaltonetworks.com/feed/" },
       { name:"Security Boulevard", url:"https://securityboulevard.com/feed" },
-      { name:"X (Twitter) â€” Live Search", url:"https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type:"x" }
+      { name:"X (Twitter) ” Live Search", url:"https://x.com/search?q={{CVE}}&src=recent_search_click&f=live", type:"x" }
     ];
   }
   function norm(text) { return (text || '').replace(/[\u2010\u2011\u2012\u2013\u2014\u2212]/g, '-').toUpperCase(); }
@@ -1655,7 +1655,7 @@ function handleSearch() {
     isCVE(v) ? runSearch() : runVendorProductSearch(v);
   } catch (e) {
     console.error('handleSearch error:', e);
-    toast('Search failed â€” check console for details.');
+    toast('Search failed ” check console for details.');
   }
 }
 function bindSearchHandlers() {
@@ -1706,7 +1706,7 @@ function clearCveFields() {
     const analysisBody = document.getElementById('analysisBody');
     const analysisStatus = document.getElementById('analysisStatus');
     if (analysisBody) analysisBody.textContent = '';
-    if (analysisStatus) analysisStatus.textContent = 'Preparing analysisâ€¦';
+    if (analysisStatus) analysisStatus.textContent = 'Preparing analysis¦';
 
     // IMPORTANT: Do NOT touch Exploitation Watch (#watchContent),
     // VulnCheck panel (#vulncheckContent), or any cveWatcher.* localStorage keys.
@@ -1715,7 +1715,7 @@ function clearCveFields() {
     toast('CVE fields cleared');
   } catch (e) {
     console.error('clearCveFields error:', e);
-    toast('Clear failed â€” check console for details.');
+    toast('Clear failed ” check console for details.');
   }
 }
 
