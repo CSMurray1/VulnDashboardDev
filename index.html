@@ -911,19 +911,36 @@ function normalizeSsvcValue(val) { return (val || 'N/A').toLowerCase().replace(/
 function capFirst(str) { return (str || '').charAt(0).toUpperCase() + str.slice(1); }
 function extractSsvcDeep(obj) {
   const decisionPoints = { exploitation: 'N/A', automatable: 'N/A', technicalImpact: 'N/A', decision: 'N/A' };
-  const traverse = (o) => {
-    if (typeof o !== 'object' || !o) return;
-    for (const key in o) {
-      if (key === 'exploitation') decisionPoints.exploitation = normalizeSsvcValue(o[key]);
-      if (key === 'automatable') decisionPoints.automatable = normalizeSsvcValue(o[key]);
-      if (key === 'technical_impact') decisionPoints.technicalImpact = normalizeSsvcValue(o[key]);
-      if (key === 'decision') decisionPoints.decision = normalizeSsvcValue(o[key]);
-      traverse(o[key]);
+  const canonical = (k) => k?.toString().toLowerCase().replace(/[\s_\-]/g, '');
+
+  const visit = (o) => {
+    if (!o || typeof o !== 'object') return;
+
+    for (const k in o) {
+      const ck = canonical(k);
+      const v = o[k];
+
+      // Some providers wrap values like { value: "active" }
+      const val = (v && typeof v === 'object' && 'value' in v) ? v.value : v;
+
+      if (ck === 'exploitation')          decisionPoints.exploitation   = normalizeSsvcValue(val);
+      if (ck === 'automatable')           decisionPoints.automatable    = normalizeSsvcValue(val);
+      if (ck === 'technicalimpact')       decisionPoints.technicalImpact = normalizeSsvcValue(val);
+      if (ck === 'decision')              decisionPoints.decision       = normalizeSsvcValue(val);
+
+      // Known nest: decision_points: [ {...}, {...} ]
+      if (ck === 'decisionpoints' && Array.isArray(v)) {
+        v.forEach(visit);
+      }
+
+      visit(v);
     }
   };
-  traverse(obj);
+
+  visit(obj);
   return decisionPoints;
 }
+  
 /* ---------- Vendor/Product helpers ---------- */
 /* [unchanged helpers: severityFromScore, classFromScore, tokensFromQuery, cpeTokensMatch, vulnMatchesTokens, fetchNvdCvesByKeyword, renderVendorProductResults, runVendorProductSearch] */
 function severityFromScore(score) { return score < 4 ? 'Low' : score < 7 ? 'Medium' : score < 9 ? 'High' : 'Critical'; }
@@ -1031,53 +1048,66 @@ async function runSearch() {
       ? new Date(cveData.cveMetadata.datePublished).toLocaleDateString()
       : 'N/A';
 
-    // SSVC block (best effort)
-    let ssvcInlineHtml = '';
-    try {
-      const allMetrics = (adpProviders || [])
-        .flatMap(p => (p.metrics || []).map(m => ({ provider: p, metric: m })));
-      const ssvcMetricEntry =
-        allMetrics.find(({ provider, metric }) =>
-          (provider?.providerMetadata?.shortName || '').toLowerCase().includes('cisa') &&
-          metric?.other && String(metric.other.type || '').toLowerCase() === 'ssvc'
-        ) ||
-        allMetrics.find(({ metric }) =>
-          metric?.other && String(metric.other.type || '').toLowerCase() === 'ssvc'
-        );
+// --- SSVC block (robust) ---
+let ssvcInlineHtml = '';
+try {
+  const allMetrics = (adpProviders || [])
+    .flatMap(p => (p.metrics || []).map(m => ({ provider: p, metric: m })));
 
-      const ssvcContent = ssvcMetricEntry?.metric?.other?.content;
-      const parsed = extractSsvcDeep(ssvcContent);
-      const exploitation = capFirst(parsed.exploitation);
-      const automatable = capFirst(parsed.automatable);
-      const technicalImpact = capFirst(parsed.technicalImpact);
-      const decision = capFirst(parsed.decision);
-      const providerName = ssvcMetricEntry?.provider?.providerMetadata?.shortName || 'ADP';
+  // Find any metric that hints SSVC (type contains 'ssvc', or has an 'ssvc' field)
+  const ssvcMetricEntry =
+    allMetrics.find(({ metric }) => {
+      const t = (metric?.other?.type || metric?.type || '').toString().toLowerCase();
+      return t.includes('ssvc');
+    }) ||
+    allMetrics.find(({ metric }) => !!metric?.ssvc);
 
-      ssvcInlineHtml = `
-        <div class="metrics-box">
-          <div class="title">SSVC Metrics (${providerName})</div>
-          <table>
-            <tr><th>Exploitation</th><td>${exploitation}</td></tr>
-            <tr><th>Automatable</th><td>${automatable}</td></tr>
-            <tr><th>Technical Impact</th><td>${technicalImpact}</td></tr>
-            ${decision !== 'N/A' ? `<tr><th>Decision</th><td>${decision}</td></tr>` : ''}
-          </table>
-        </div>`;
+  // Extract the SSVC payload from multiple possible nests
+  let ssvcContent =
+      ssvcMetricEntry?.metric?.other?.content ??
+      ssvcMetricEntry?.metric?.content ??
+      ssvcMetricEntry?.metric?.ssvc ??
+      null;
 
-      if (!ssvcMetricEntry || !ssvcContent) {
-        ssvcInlineHtml = `
-        <div class="metrics-box">
-          <div class="title">SSVC Decision Points</div>
-          <table><tr><th>Status</th><td>No SSVC Data is Available at this time.</td></tr></table>
-        </div>`;
-      }
-    } catch {
-      ssvcInlineHtml = `
+  // Some providers ship SSVC content as a JSON string
+  if (typeof ssvcContent === 'string') {
+    try { ssvcContent = JSON.parse(ssvcContent); } catch {}
+  }
+
+  // Parse decision points
+  const parsed = extractSsvcDeep(ssvcContent);
+  const exploitation = capFirst(parsed.exploitation);
+  const automatable = capFirst(parsed.automatable);
+  const technicalImpact = capFirst(parsed.technicalImpact);
+  const decision = capFirst(parsed.decision);
+  const providerName = ssvcMetricEntry?.provider?.providerMetadata?.shortName || 'ADP';
+
+  ssvcInlineHtml = `
+    <div class="metrics-box">
+      <div class="title">SSVC Metrics (${providerName})</div>
+      <table>
+        <tr><th>Exploitation</th><td>${exploitation}</td></tr>
+        <tr><th>Automatable</th><td>${automatable}</td></tr>
+        <tr><th>Technical Impact</th><td>${technicalImpact}</td></tr>
+        ${decision !== 'N/A' ? `<tr><th>Decision</th><td>${decision}</td></tr>` : ''}
+      </table>
+    </div>`;
+
+  if (!ssvcMetricEntry || !ssvcContent) {
+    ssvcInlineHtml = `
       <div class="metrics-box">
         <div class="title">SSVC Decision Points</div>
         <table><tr><th>Status</th><td>No SSVC Data is Available at this time.</td></tr></table>
       </div>`;
-    }
+  }
+} catch {
+  ssvcInlineHtml = `
+    <div class="metrics-box">
+      <div class="title">SSVC Decision Points</div>
+      <table><tr><th>Status</th><td>No SSVC Data is Available at this time.</td></tr></table>
+    </div>`;
+}
+  
     // References (by host) from CNA
     const refs = (cna.references || []).filter(r => r.url && r.url.startsWith('https://'));
     const grouped = refs.reduce((acc, r) => {
