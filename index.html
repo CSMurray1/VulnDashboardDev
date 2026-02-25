@@ -75,6 +75,33 @@ nav button:hover {
   background: #555;
 }
 
+/* === KEV-Lite row styles === */
+.kev-row {
+  display: grid;
+  grid-template-columns: 160px 1fr auto;
+  gap: 12px;
+  align-items: start;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border-light);
+}
+body.dark .kev-row { border-color: #444; }
+.kev-row .cve { font-weight: 600; }
+.kev-row .name { color: inherit; }
+.kev-row .meta-line { font-size: 13px; opacity: .9; }
+.kev-row .dueSoon { font-weight: 700; color: #0d6efd; }
+.kev-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  margin-left: 8px;
+  background: #6c757d;
+}
+.kev-badge.ransomware { background: #a60000; }
+.kev-badge.fresh { background: #0d6efd; }  
+
 /* ===== Tabs Container ===== */
 .tabs > section {
   display: none;
@@ -541,6 +568,7 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
 <nav>
   <button class="active" onclick="switchTab(0)">CVE Lookup</button>
   <button onclick="switchTab(1)">Feeds</button>
+  <button onclick="switchTab(2)">KEV‑Lite</button>
 </nav>
 <button class="mode" onclick="toggleMode()">Dark Mode</button>
 <div class="tabs">
@@ -579,6 +607,37 @@ body.dark #watchContent::-webkit-scrollbar-thumb {
   <section id="tab2">
     <h1 class="feeds-header">Security Feeds</h1>
     <div id="feed-container" class="feed-container"></div>
+  </section>
+  <section id="tab3">
+    <header class="cve-header">
+      <h1>KEV‑Lite (fast)</h1>
+      <input id="kevFilter" placeholder="Filter by CVE or name (e.g., 'roundcube', 'CVE-2026-25108')" />
+      <button id="kevRefresh" class="btn">Refresh</button>
+      <span id="kevStats" class="meta" style="margin-left:8px;"></span>
+    </header>
+
+    <main class="cve-main" style="grid-template-columns: 2fr 1fr; grid-template-areas: 'kevlist kevdetails';">
+      <!-- Virtualized list container -->
+      <div id="kevListPanel" class="panel" style="grid-area: kevlist;">
+        <header><h2>Known Exploited Vulnerabilities</h2></header>
+        <div id="kevViewport" class="content" style="height: 70vh; overflow-y: auto; position: relative;">
+          <!-- top spacer represents rows above the window -->
+          <div id="kevTopSpacer"></div>
+          <!-- window where ~60 DOM rows are mounted -->
+          <div id="kevWindow"></div>
+          <!-- bottom spacer represents rows below the window -->
+          <div id="kevBottomSpacer"></div>
+        </div>
+      </div>
+
+      <!-- Details panel (updates on selection) -->
+      <div id="kevDetailsPanel" class="panel" style="grid-area: kevdetails;">
+        <header><h2>Details</h2></header>
+        <div id="kevDetails" class="content">
+          <div class="meta">Click a row to see details.</div>
+        </div>
+      </div>
+    </main>
   </section>
 </div>
 <div id="toast"></div>
@@ -1726,7 +1785,321 @@ document.addEventListener('DOMContentLoaded', () => {
     clearBtn.addEventListener('click', clearCveFields);
   }
 });
- 
+
+<script>
+/* ===========================
+   KEV-Lite (fast) tab script
+   =========================== */
+
+/* Data sources (same catalog as KEV-Lite) */
+const KEV_FAST_SOURCES = [
+  // cisagov mirror is generally very fast and consistent
+  'https://raw.githubusercontent.com/cisagov/kev-data/develop/known_exploited_vulnerabilities.json',
+  // cisa.gov official feed (fallback)
+  'https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json'
+];
+const KEV_CACHE_TTL_MIN = 60;  // cache TTL
+const KEV_ROW_HEIGHT = 74;     // approximate row height for windowing
+const KEV_WINDOW_SIZE = 60;    // how many rows to mount at a time
+const KEV_WINDOW_BUFFER = 20;  // pre-render buffer above/below
+
+let kevAll = [];          // full array of entries
+let kevFiltered = [];     // current filtered view
+let kevWorker = null;     // Web Worker for parsing + filtering
+let kevViewport = null;
+let kevWindow = null;
+let kevTopSpacer = null;
+let kevBottomSpacer = null;
+let kevStats = null;
+let kevDetails = null;
+let kevFilterInput = null;
+
+function minutesSince(ts) {
+  if (!ts) return Infinity;
+  const then = Number(new Date(ts));
+  return Number.isFinite(then) ? (Date.now() - then) / (60 * 1000) : Infinity;
+}
+
+/* ------- Web Worker (inline via Blob) ------- */
+function ensureKevWorker() {
+  if (kevWorker) return;
+  const src = `
+    let kevData = [];
+    let filtered = [];
+
+    function normalize(str) {
+      return (str || '').toLowerCase();
+    }
+    function matches(entry, tokens) {
+      if (!tokens || !tokens.length) return true;
+      const blob = [
+        entry.cveID,
+        entry.vendorProject,
+        entry.product,
+        entry.vulnerabilityName,
+        entry.shortDescription
+      ].map(normalize).join(' ');
+      return tokens.every(t => blob.includes(t));
+    }
+
+    self.onmessage = (e) => {
+      const { type, payload } = e.data;
+
+      if (type === 'init') {
+        kevData = Array.isArray(payload) ? payload : [];
+        filtered = kevData;
+        self.postMessage({ type: 'init_done', count: kevData.length });
+      }
+
+      if (type === 'filter') {
+        const q = String(payload || '').trim().toLowerCase();
+        const tokens = q.split(/\\s+/).filter(t => t.length > 1);
+        filtered = kevData.filter(e => matches(e, tokens));
+        self.postMessage({ type: 'filter_done', count: filtered.length, sample: filtered.slice(0, 200) });
+      }
+
+      if (type === 'slice') {
+        const { start, end } = payload;
+        const window = filtered.slice(start, end);
+        self.postMessage({ type: 'slice_done', start, end, window });
+      }
+
+      if (type === 'getByIndex') {
+        const { index } = payload;
+        const item = filtered[index] || null;
+        self.postMessage({ type: 'get_done', index, item });
+      }
+    };
+  `;
+  kevWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+}
+
+/* ------- Fetch KEV JSON (cached, with fallback) ------- */
+async function fetchKevJson() {
+  // cache
+  try {
+    const last = localStorage.getItem('kev.fast.lastFetch');
+    const ttlMin = Number(localStorage.getItem('kev.fast.ttl')) || KEV_CACHE_TTL_MIN;
+    if (minutesSince(last) < ttlMin) {
+      const cached = JSON.parse(localStorage.getItem('kev.fast.json') || '[]');
+      if (Array.isArray(cached) && cached.length) return cached;
+    }
+  } catch {}
+
+  for (const url of KEV_FAST_SOURCES) {
+    try {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) continue;
+      const json = await r.json();
+      const arr = Array.isArray(json) ? json : (json.vulnerabilities || []);
+      if (Array.isArray(arr) && arr.length) {
+        localStorage.setItem('kev.fast.json', JSON.stringify(arr));
+        localStorage.setItem('kev.fast.lastFetch', new Date().toISOString());
+        localStorage.setItem('kev.fast.ttl', String(KEV_CACHE_TTL_MIN));
+        return arr;
+      }
+    } catch { /* try next */ }
+  }
+  throw new Error('Unable to load KEV JSON');
+}
+
+/* ------- Row template (compact, “exactly as it is”) ------- */
+function renderKevRow(entry, index) {
+  const cve = entry.cveID || 'Unknown';
+  const name = entry.vulnerabilityName || 'No name';
+  const vendor = entry.vendorProject || '';
+  const product = entry.product || '';
+  const dateAdded = entry.dateAdded || '';
+  const dueDate = entry.dueDate || '';
+  const ransomware = String(entry.knownRansomwareCampaignUse || 'Unknown').toLowerCase() === 'known';
+
+  const fresh = (() => {
+    // highlight the “freshest” (recently added) similar to KEV-Lite
+    try {
+      const added = new Date(dateAdded).getTime();
+      return (Date.now() - added) < (10 * 24 * 60 * 60 * 1000);
+    } catch { return false; }
+  })();
+
+  const metaRight = [];
+  if (fresh) metaRight.push('<span class="kev-badge fresh">Fresh</span>');
+  if (ransomware) metaRight.push('<span class="kev-badge ransomware">Ransomware</span>');
+
+  return `
+    <div class="kev-row" data-index="${index}" role="button" tabindex="0" aria-label="Open details for ${cve}">
+      <div class="cve">
+        https://cve.mitre.org/cgi-bin/cvename.cgi?name=${cve}${cve}</a>
+      </div>
+      <div>
+        <div class="name">${name}</div>
+        <div class="meta-line">${vendor}${vendor && product ? ' · ' : ''}${product}</div>
+        <div class="meta-line">Added: ${dateAdded || 'N/A'} · Due: <span class="${fresh ? 'dueSoon' : ''}">${dueDate || 'N/A'}</span></div>
+      </div>
+      <div>${metaRight.join(' ')}</div>
+    </div>
+  `;
+}
+
+/* ------- Mount a slice into the window ------- */
+function mountKevSlice(start, end, windowData) {
+  kevWindow.innerHTML = windowData.map((e, i) => renderKevRow(e, start + i)).join('');
+}
+
+/* ------- Update spacers based on total and window ------- */
+function updateSpacers(total, start, end) {
+  const before = start * KEV_ROW_HEIGHT;
+  const after  = (total - end) * KEV_ROW_HEIGHT;
+  kevTopSpacer.style.height = before + 'px';
+  kevBottomSpacer.style.height = after + 'px';
+}
+
+/* ------- Handle viewport scroll (request a new slice) ------- */
+let kevScrollRAF = null;
+function onKevScroll() {
+  if (kevScrollRAF) return;
+  kevScrollRAF = requestAnimationFrame(async () => {
+    kevScrollRAF = null;
+
+    const total = kevFiltered.length;
+    const scrollTop = kevViewport.scrollTop;
+    const start = Math.max(0, Math.floor(scrollTop / KEV_ROW_HEIGHT) - KEV_WINDOW_BUFFER);
+    const end   = Math.min(total, start + KEV_WINDOW_SIZE);
+
+    ensureKevWorker();
+    kevWorker.postMessage({ type: 'slice', payload: { start, end } });
+    updateSpacers(total, start, end);
+  });
+}
+
+/* ------- Selection -> details panel ------- */
+function onKevWindowClick(e) {
+  const row = e.target.closest('.kev-row');
+  if (!row) return;
+  const index = Number(row.dataset.index || -1);
+  if (index < 0) return;
+
+  ensureKevWorker();
+  kevWorker.postMessage({ type: 'getByIndex', payload: { index } });
+}
+
+/* ------- Details panel renderer ------- */
+function renderKevDetails(entry) {
+  if (!entry) {
+    kevDetails.innerHTML = '<div class="meta">No details.</div>';
+    return;
+  }
+  const links = String(entry.notes || '')
+    .split(/\s*;\s*/)
+    .filter(Boolean)
+    .map(u => linkRow(u.trim(), u.trim()))
+    .join('<br>') || '<span class="meta">No references listed.</span>';
+
+  const cwes = Array.isArray(entry.cwes) && entry.cwes.length
+    ? entry.cwes.join(', ')
+    : 'None';
+
+  kevDetails.innerHTML = `
+    <div class="item"><div class="title">${entry.cveID} · ${entry.vulnerabilityName || '—'}</div></div>
+    <div class="item"><div class="title">Vendor/Product</div><div class="meta">${entry.vendorProject || '—'}${entry.vendorProject && entry.product ? ' · ' : ''}${entry.product || '—'}</div></div>
+    <div class="item"><div class="title">Description</div><div class="meta">${entry.shortDescription || '—'}</div></div>
+    <div class="item"><div class="title">Action</div><div class="meta">${entry.requiredAction || '—'}</div></div>
+    <div class="item"><div class="title">Timeline</div><div class="meta">Added: ${entry.dateAdded || '—'} · Due: ${entry.dueDate || '—'}</div></div>
+    <div class="item"><div class="title">Ransomware Campaign Use</div><div class="meta">${entry.knownRansomwareCampaignUse || 'Unknown'}</div></div>
+    <div class="item"><div class="title">CWEs</div><div class="meta">${cwes}</div></div>
+    <div class="item"><div class="title">References</div><div class="meta">${links}</div></div>
+  `;
+}
+
+/* ------- Debounced filter ------- */
+let kevFilterTimer = null;
+function onKevFilterInput() {
+  clearTimeout(kevFilterTimer);
+  kevFilterTimer = setTimeout(() => {
+    const q = kevFilterInput.value || '';
+    ensureKevWorker();
+    kevWorker.postMessage({ type: 'filter', payload: q });
+  }, 200);
+}
+
+/* ------- Initialize tab 3 ------- */
+async function initKevLiteFast() {
+  kevViewport   = document.getElementById('kevViewport');
+  kevWindow     = document.getElementById('kevWindow');
+  kevTopSpacer  = document.getElementById('kevTopSpacer');
+  kevBottomSpacer = document.getElementById('kevBottomSpacer');
+  kevStats      = document.getElementById('kevStats');
+  kevDetails    = document.getElementById('kevDetails');
+  kevFilterInput= document.getElementById('kevFilter');
+
+  if (!kevViewport || !kevWindow) return;
+
+  kevViewport.addEventListener('scroll', onKevScroll);
+  document.getElementById('kevRefresh')?.addEventListener('click', async () => {
+    localStorage.removeItem('kev.fast.lastFetch');
+    await initKevLiteFast();
+  });
+  kevFilterInput?.addEventListener('input', onKevFilterInput);
+  kevWindow.addEventListener('click', onKevWindowClick);
+
+  try {
+    const json = await fetchKevJson();
+    kevAll = json;
+    kevFiltered = kevAll; // default view
+    ensureKevWorker();
+    kevWorker.onmessage = (e) => {
+      const { type } = e.data;
+
+      if (type === 'init_done') {
+        kevStats.textContent = `Loaded ${e.data.count} entries`;
+        // trigger first slice
+        onKevScroll();
+      }
+      if (type === 'filter_done') {
+        // update filtered window
+        kevFiltered = e.data.sample.length ? e.data.sample.concat(kevAll.slice(e.data.sample.length)) : [];
+        const total = e.data.count;
+        kevStats.textContent = `Showing ${total} / ${kevAll.length}`;
+        // reset viewport
+        kevViewport.scrollTop = 0;
+        const start = 0;
+        const end = Math.min(total, KEV_WINDOW_SIZE);
+        kevWorker.postMessage({ type: 'slice', payload: { start, end } });
+        updateSpacers(total, start, end);
+        // clear details
+        renderKevDetails(null);
+      }
+      if (type === 'slice_done') {
+        mountKevSlice(e.data.start, e.data.end, e.data.window);
+      }
+      if (type === 'get_done') {
+        renderKevDetails(e.data.item);
+      }
+    };
+    kevWorker.postMessage({ type: 'init', payload: kevAll });
+  } catch (err) {
+    kevWindow.innerHTML = `<div class="meta">Failed to load KEV: ${err.message}</div>`;
+  }
+}
+
+/* ------- Update switchTab() to handle 3 tabs ------- */
+const __origSwitchTab = switchTab;
+switchTab = function(tabIndex) {
+  const tabs = [document.getElementById('tab1'), document.getElementById('tab2'), document.getElementById('tab3')];
+  document.querySelectorAll('nav button').forEach((btn, i) => { btn.classList.toggle('active', i === tabIndex); });
+  tabs.forEach((tab, i) => { tab.classList.toggle('active', i === tabIndex); });
+  if (tabIndex === 2) {
+    // lazy-init KEV-Lite when user opens the tab first time
+    if (!localStorage.getItem('kev.fast.inited')) {
+      initKevLiteFast().then(() => localStorage.setItem('kev.fast.inited', '1'));
+    }
+  }
+};
+
+/* ------- Hook into DOMContentLoaded (after your existing init) ------- */
+document.addEventListener('DOMContentLoaded', () => {
+  // no-op; switchTab will lazily initialize the KEV-Lite tab on first visit
+});
+  
 /* ---------- Init ---------- */
 
 document.addEventListener("DOMContentLoaded", () => {
