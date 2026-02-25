@@ -1949,7 +1949,7 @@ function renderKevRow(entry, index) {
   return `
     <div class="kev-row" data-index="${index}" role="button" tabindex="0" aria-label="Open details for ${cve}">
       <div class="cve">
-        https://cve.mitre.org/cgi-bin/cvename.cgi?name=${cve}${cve}</a>
+        <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=${cve}">${cve}</a>
       </div>
       <div>
         <div class="name">${name}</div>
