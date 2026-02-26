@@ -8,84 +8,65 @@
 <style>
 :root {
   --bg: #02020a;
-  --text: #00ff9f;
+  --text: #d0ffd0;
   --panel: #0a0a12;
-  --border: #00ff41;
-  --accent: #00ff41;
-  --neon-cyan: #00ffff;
-  --link: #00ffff;
-  --input-bg: #111118;
-  --input-text: #00ff9f;
+  --border: #00cc66;
+  --accent: #00cc66;
+  --neon-cyan: #40e0d0;
+  --link: #40e0d0;
+  --input-bg: #0f0f18;
+  --input-text: #e0ffe0;
+  --glow: rgba(0,204,102,0.35);
 }
 
-/* ===== MATRIX BASE ===== */
 body {
   font-family: 'Courier New', Courier, monospace;
   margin: 0;
   background: var(--bg);
   color: var(--text);
   line-height: 1.5;
-  overflow-x: hidden;
 }
-a { color: var(--link); text-decoration: none; }
-a:hover { text-decoration: underline; color: #fff; }
 
-/* ===== MATRIX RAIN CANVAS ===== */
 #matrix-bg {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
   z-index: -1;
-  opacity: 0.12;
+  opacity: 0.08;
   pointer-events: none;
   mix-blend-mode: screen;
 }
 
-/* ===== NAV ===== */
+a { color: var(--link); text-decoration: none; }
+a:hover { color: #fff; text-decoration: underline; }
+
 nav {
   display: flex;
   background: #000;
   border-bottom: 2px solid var(--accent);
-  box-shadow: 0 0 20px rgba(0,255,65,0.4);
+  box-shadow: 0 0 15px var(--glow);
 }
 nav button {
   flex: 1;
-  padding: 16px 24px;
+  padding: 16px;
   font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 1.5px;
   background: transparent;
   color: var(--text);
   border: none;
   cursor: pointer;
-  transition: all 0.2s;
-  position: relative;
-}
-nav button::after {
-  content: '';
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 3px;
-  background: var(--accent);
-  transform: scaleX(0);
-  transition: transform 0.3s;
+  transition: 0.25s;
 }
 nav button.active {
-  color: #000;
   background: var(--accent);
-  text-shadow: none;
+  color: #000;
 }
-nav button.active::after { transform: scaleX(1); }
-nav button:hover:not(.active) {
-  background: rgba(0,255,65,0.1);
-  color: var(--accent);
-}
+nav button:hover:not(.active) { background: rgba(0,204,102,0.15); }
 
-/* ===== HEADER ===== */
 header.cve-header {
-  padding: 18px 24px;
-  background: rgba(10,10,18,0.95);
+  padding: 16px 24px;
+  background: rgba(10,10,18,0.92);
   border-bottom: 1px solid var(--border);
   display: flex;
   gap: 12px;
@@ -94,226 +75,166 @@ header.cve-header {
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 4px 20px rgba(0,255,65,0.2);
+  box-shadow: 0 4px 16px var(--glow);
 }
 header.cve-header h1 {
   margin: 0;
-  font-size: 26px;
-  font-weight: 900;
-  letter-spacing: 4px;
+  font-size: 24px;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  text-shadow: 0 0 15px var(--accent);
-}
-header.cve-header h1::before {
-  content: "◼";
-  color: var(--accent);
-  font-size: 28px;
-  animation: pulse 2s infinite;
+  text-shadow: 0 0 12px var(--accent);
 }
 
-/* ===== INPUTS & NEON BUTTONS ===== */
 #cve {
   flex: 1;
-  min-width: 320px;
-  padding: 14px 20px;
-  font-size: 17px;
-  font-family: 'Courier New', monospace;
+  min-width: 300px;
+  padding: 12px 18px;
+  font-size: 16px;
   background: var(--input-bg);
   border: 2px solid var(--border);
-  border-radius: 6px;
   color: var(--input-text);
-  box-shadow: inset 0 0 12px rgba(0,255,65,0.2);
+  border-radius: 4px;
+  box-shadow: inset 0 0 10px rgba(0,204,102,0.15);
 }
 .btn {
-  padding: 12px 24px;
-  font-weight: 700;
+  padding: 10px 20px;
+  font-weight: bold;
   letter-spacing: 1px;
-  text-transform: uppercase;
-  font-size: 14px;
-  border: 2px solid var(--accent);
   background: transparent;
+  border: 2px solid var(--accent);
   color: var(--accent);
-  border-radius: 6px;
+  border-radius: 4px;
   cursor: pointer;
   transition: all 0.25s;
-  box-shadow: 0 0 12px rgba(0,255,65,0.5);
-  position: relative;
-  overflow: hidden;
-}
-.btn::before {
-  content: '';
-  position: absolute;
-  top: -50%; left: -50%;
-  width: 40%; height: 200%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-  transform: skewX(-25deg);
-  transition: left 0.6s;
+  box-shadow: 0 0 10px var(--glow);
 }
 .btn:hover {
   background: var(--accent);
   color: #000;
-  box-shadow: 0 0 25px var(--accent);
-  transform: translateY(-2px);
+  box-shadow: 0 0 20px var(--glow);
+  transform: translateY(-1px);
 }
-.btn:hover::before { left: 120%; }
 
-/* ===== PANELS ===== */
 .panel {
   background: var(--panel);
-  border: 2px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   overflow: hidden;
-  box-shadow: 0 0 20px rgba(0,255,65,0.15);
-  transition: all 0.3s;
+  box-shadow: 0 0 16px var(--glow);
 }
-.panel:hover { box-shadow: 0 0 30px rgba(0,255,65,0.3); }
 .panel > header {
-  padding: 14px 20px;
-  background: linear-gradient(to right, #111118, #1a1a22);
+  padding: 12px 18px;
+  background: #111118;
   border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.panel > header h2 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-.content { padding: 18px 20px; }
-
-/* ===== ITEMS ===== */
-.item {
-  padding: 14px 0;
-  border-bottom: 1px dashed rgba(0,255,65,0.3);
-  transition: background 0.2s;
-}
-.item:hover { background: rgba(0,255,65,0.08); }
-.item:last-child { border: none; }
-.title { font-weight: 700; margin-bottom: 6px; color: #fff; }
-.meta { font-size: 13px; opacity: 0.85; line-height: 1.4; }
-
-/* ===== CHIPS & BADGES ===== */
-.chip {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 900;
+  font-weight: bold;
   letter-spacing: 1px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.content { padding: 16px 18px; font-size: 14px; }
+.item {
+  padding: 10px 0;
+  border-bottom: 1px dashed rgba(0,204,102,0.25);
+}
+.item:last-child { border: none; }
+.title { color: #fff; font-weight: bold; margin-bottom: 4px; }
+.meta { opacity: 0.85; }
+
+.chip {
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: bold;
   margin-left: 8px;
 }
-.low { background:#006600; color:#00ff9f; }
-.medium { background:#aa8800; color:#ff0; }
-.high { background:#cc4400; color:#fff; }
-.critical { background:#aa0000; color:#ff99aa; animation: criticalPulse 1.5s infinite; }
+.low    { background:#1a4d1a; color:#90ff90; }
+.medium { background:#4d4d1a; color:#ffff90; }
+.high   { background:#4d2a1a; color:#ffcc90; }
+.critical { background:#4d1a1a; color:#ff9090; }
 
 .badge {
-  padding: 6px 14px;
+  padding: 4px 10px;
   border-radius: 999px;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: bold;
 }
-.yes { background:#004400; color:#00ff41; border:1px solid #00ff41; }
-.no { background:#330000; color:#ff6666; border:1px solid #ff6666; }
+.yes { background:#004400; color:#90ff90; border:1px solid #00cc66; }
+.no  { background:#330000; color:#ff9090; border:1px solid #cc4444; }
 
-/* ===== METRICS ===== */
-.metrics-row {
-  display: flex;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-.metrics-col { flex: 1; min-width: 280px; }
-.metrics-box {
-  background: rgba(0,255,65,0.06);
-  border: 1px solid rgba(0,255,65,0.3);
-  border-radius: 6px;
-  padding: 14px;
-}
-.metrics-box .title {
-  color: var(--accent);
-  margin-bottom: 10px;
-  font-size: 14px;
-}
-
-/* ===== TOAST ===== */
 #toast {
   position: fixed;
-  bottom: 30px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   background: #000;
   color: var(--accent);
   border: 2px solid var(--accent);
-  padding: 14px 32px;
-  border-radius: 6px;
-  font-weight: 700;
-  box-shadow: 0 0 30px var(--accent);
+  padding: 12px 28px;
+  border-radius: 4px;
+  font-weight: bold;
+  box-shadow: 0 0 20px var(--glow);
   display: none;
   z-index: 9999;
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
-/* ===== LOADING ===== */
 #loading {
   position: fixed;
   inset: 0;
-  background: rgba(2,2,10,0.95);
+  background: rgba(2,2,10,0.9);
   color: var(--accent);
-  font-size: 28px;
-  font-weight: 900;
-  letter-spacing: 6px;
+  font-size: 24px;
+  font-weight: bold;
+  letter-spacing: 4px;
   display: none;
-  align-items: center;
-  justify-content: center;
+  place-items: center;
   z-index: 12000;
-  text-shadow: 0 0 30px var(--accent);
 }
 
-/* ===== ANALYSIS MODAL ===== */
-#analysisModal > div {
-  background: #0a0a12;
-  border: 3px solid var(--accent);
-  box-shadow: 0 0 60px rgba(0,255,65,0.6);
-}
-
-/* ===== RESPONSIVE GRID ===== */
 main.cve-main {
-  padding: 24px;
+  padding: 20px;
   display: grid;
   grid-template-columns: 2fr 1fr 340px;
+  gap: 20px;
   grid-template-areas:
     "details details watch"
     "sources relevant vulncheck";
-  gap: 24px;
 }
-@media (max-width: 1480px) {
+@media (max-width: 1400px) {
   main.cve-main { grid-template-columns: 1fr 1fr; grid-template-areas: "details details" "watch watch" "vulncheck vulncheck" "sources relevant"; }
 }
-@media (max-width: 980px) {
+@media (max-width: 900px) {
   main.cve-main { grid-template-columns: 1fr; grid-template-areas: "details" "watch" "vulncheck" "sources" "relevant"; }
 }
 
-/* ===== FEEDS ===== */
 .feed {
-  background: #0a0a12;
-  border: 2px solid var(--border);
-  border-radius: 8px;
-  padding: 18px;
-  width: 320px;
-  box-shadow: 0 0 15px rgba(0,255,65,0.2);
+  background: #0f0f18;
+  border: 1px solid #00cc66;
+  border-radius: 6px;
+  padding: 16px;
+  width: 340px;
+  box-shadow: 0 0 12px rgba(0,204,102,0.2);
 }
-.feed h2 { color: var(--accent); margin: 0 0 12px 0; font-size: 15px; letter-spacing: 2px; }
+.feed h2 { color: var(--accent); margin: 0 0 12px 0; font-size: 15px; }
 
-/* ===== ANIMATIONS ===== */
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
-@keyframes criticalPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+#analysisModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(2,2,10,0.9);
+  z-index: 13000;
+  place-items: center;
+}
+#analysisModal > div {
+  background: #0a0a12;
+  border: 2px solid var(--accent);
+  padding: 24px;
+  border-radius: 6px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 85vh;
+  overflow: auto;
+}
 </style>
 </head>
 <body>
@@ -326,7 +247,6 @@ main.cve-main {
 </nav>
 
 <div class="tabs">
-  <!-- ===== CVE LOOKUP TAB ===== -->
   <section id="tab1" class="active">
     <header class="cve-header">
       <h1>MATRIX VULN</h1>
@@ -338,96 +258,84 @@ main.cve-main {
     </header>
 
     <main class="cve-main">
-      <div id="cveDetails" class="panel">
-        <header><h2>CVE CORE</h2></header>
+      <div id="cveDetails" class="panel" style="grid-area:details">
+        <header>CVE CORE</header>
         <div class="content" id="cveContent"><div class="meta">ENTER TARGET • PRESS BREACH</div></div>
       </div>
 
-      <div id="exploitationWatch" class="panel">
-        <header><h2>EXPLOITATION IN THE WILD (10d)</h2><button id="watchRefresh" class="btn">REFRESH</button></header>
-        <div id="watchContent" class="content"><div class="meta">Scanning dark feeds…</div></div>
+      <div id="exploitationWatch" class="panel" style="grid-area:watch">
+        <header>EXPLOITATION IN THE WILD (10d) <button id="watchRefresh" class="btn">REFRESH</button></header>
+        <div id="watchContent" class="content"><div class="meta">Scanning feeds…</div></div>
       </div>
 
-      <div id="vulncheckMonitor" class="panel">
-        <header><h2>VULNCHECK KEV • RECENT</h2><button id="vulncheckRefresh" class="btn">REFRESH</button></header>
-        <div id="vulncheckContent" class="content"><div class="meta">Loading KEV stream…</div></div>
+      <div id="vulncheckMonitor" class="panel" style="grid-area:vulncheck">
+        <header>VULNCHECK KEV • RECENT <button id="vulncheckRefresh" class="btn">REFRESH</button></header>
+        <div id="vulncheckContent" class="content"><div class="meta">Loading…</div></div>
       </div>
 
-      <div id="notableSources" class="panel">
-        <header><h2>REFERENCES • SOURCES</h2></header>
+      <div id="notableSources" class="panel" style="grid-area:sources">
+        <header>REFERENCES • SOURCES</header>
         <div id="sourcesContent" class="content"><div class="meta">Will appear after breach</div></div>
       </div>
 
-      <div id="relevantSearches" class="panel">
-        <header><h2>POCs &amp; LIVE SEARCHES</h2></header>
+      <div id="relevantSearches" class="panel" style="grid-area:relevant">
+        <header>POCs & LIVE SEARCHES</header>
         <div id="searchLinks" class="content"><div class="meta">Enter term above • BREACH</div></div>
       </div>
     </main>
   </section>
 
-  <!-- ===== FEEDS TAB ===== -->
   <section id="tab2">
-    <h1 style="text-align:center; margin:40px 0 20px; font-size:28px; letter-spacing:6px; text-shadow:0 0 20px var(--accent);">GLOBAL THREAT FEEDS</h1>
-    <div id="feed-container" class="feed-container" style="display:flex; flex-wrap:wrap; gap:24px; justify-content:center; padding:20px;"></div>
+    <h1 style="text-align:center; margin:40px 0; font-size:26px; letter-spacing:4px; text-shadow:0 0 12px var(--accent);">GLOBAL THREAT FEEDS</h1>
+    <div id="feed-container" style="display:flex; flex-wrap:wrap; gap:20px; justify-content:center; padding:20px;"></div>
   </section>
 </div>
 
 <div id="toast"></div>
-<div id="loading">BREACHING FIREWALL...</div>
+<div id="loading">BREACHING...</div>
 
-<!-- ANALYSIS MODAL (kept & styled) -->
-<div id="analysisModal" style="display:none; position:fixed; inset:0; background:rgba(2,2,10,0.95); z-index:13000; align-items:center; justify-content:center;">
-  <div style="width:90%; max-width:820px; max-height:88vh; overflow:auto; padding:30px; border-radius:8px;">
-    <h3 style="margin-top:0; color:var(--accent);">STATIC ANALYSIS ENGINE</h3>
-    <div id="analysisStatus" style="color:#666; margin-bottom:12px;">INITIALIZING...</div>
-    <pre id="analysisBody" style="white-space:pre-wrap; background:#000; padding:20px; border:2px solid var(--accent); border-radius:6px; min-height:300px; overflow:auto; font-size:14px;"></pre>
+<div id="analysisModal">
+  <div>
+    <h3 style="margin:0 0 16px; color:var(--accent);">STATIC ANALYSIS</h3>
+    <div id="analysisStatus" style="color:#888; margin-bottom:12px;">Preparing...</div>
+    <pre id="analysisBody" style="background:#000; padding:16px; border:1px solid var(--border); border-radius:4px; white-space:pre-wrap; min-height:200px; overflow:auto; font-size:13px;"></pre>
     <div style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
-      <button id="analysisCopy" class="btn">COPY TO CLIP</button>
-      <button id="analysisSave" class="btn">EXPORT MD</button>
-      <button id="analysisClose" class="btn">CLOSE TERMINAL</button>
+      <button id="analysisCopy" class="btn">COPY</button>
+      <button id="analysisSave" class="btn">SAVE MD</button>
+      <button id="analysisClose" class="btn">CLOSE</button>
     </div>
   </div>
 </div>
 
-<!-- WATCHER NOTIFY -->
-<div id="watcherNotify" style="position:fixed; bottom:24px; right:24px; max-width:520px; z-index:14000; display:none;"></div>
-
 <script>
-// ==================== MATRIX RAIN ====================
+// ────────────────────────────────────────────── MATRIX RAIN
 function initMatrixRain() {
   const canvas = document.getElementById('matrix-bg');
   const ctx = canvas.getContext('2d');
-  
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
 
-  const chars = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".split('');
-  const fontSize = 13;
+  const chars = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const fontSize = 14;
   let columns = canvas.width / fontSize;
   let drops = Array(Math.floor(columns)).fill(1);
 
   function draw() {
-    ctx.fillStyle = 'rgba(2,2,10,0.07)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#00ff41';
-    ctx.font = `${fontSize}px monospace`;
-
+    ctx.fillStyle = 'rgba(2,2,10,0.06)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#00cc66';
+    ctx.font = fontSize + 'px monospace';
     for (let i = 0; i < drops.length; i++) {
       const text = chars[Math.floor(Math.random() * chars.length)];
       ctx.fillText(text, i * fontSize, drops[i] * fontSize);
-      
       if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
       drops[i]++;
     }
   }
-  setInterval(draw, 38);
+  setInterval(draw, 45);
 }
 
-// ==================== UTILITIES ====================
+// ────────────────────────────────────────────── UTILS
 function toast(msg) {
   const t = document.getElementById("toast");
   t.textContent = msg;
@@ -436,153 +344,306 @@ function toast(msg) {
 }
 
 function linkRow(url, label) {
-  return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color:var(--neon-cyan);">${label || url}</a>`;
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer">${label || url}</a>`;
 }
 
-// ==================== THEME (DARK DEFAULT) ====================
-function toggleMode() {
-  document.body.classList.toggle('dark');
-  localStorage.setItem("theme", document.body.classList.contains('dark') ? "dark" : "light");
+function isCVE(str) { return /^CVE-\d{4}-\d{4,}$/i.test(str); }
+
+// ────────────────────────────────────────────── KEV
+let kevCache = { loaded: false, data: null };
+async function loadKEV() {
+  if (kevCache.loaded) return kevCache.data;
+  try {
+    const res = await fetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json');
+    const json = await res.json();
+    kevCache.data = json.vulnerabilities || [];
+    kevCache.loaded = true;
+    return kevCache.data;
+  } catch { return []; }
 }
-function initTheme() {
-  if (!localStorage.getItem("theme")) {
-    document.body.classList.add('dark');
-    localStorage.setItem("theme", "dark");
-  } else if (localStorage.getItem("theme") === "dark") {
-    document.body.classList.add('dark');
+async function getKevEntry(cveId) {
+  const kev = await loadKEV();
+  return kev.find(e => e.cveID === cveId.toUpperCase()) || null;
+}
+
+// ────────────────────────────────────────────── CVE SEARCH
+async function runSearch() {
+  const inputEl = document.getElementById("cve");
+  const inputRaw = (inputEl?.value || "").trim();
+  if (!inputRaw) return toast("ENTER A TARGET");
+  const input = inputRaw.toUpperCase();
+
+  document.getElementById("loading").style.display = "flex";
+
+  if (!isCVE(input)) {
+    document.getElementById("cveContent").innerHTML = `<div class="meta">Vendor/product search not implemented yet</div>`;
+    document.getElementById("loading").style.display = "none";
+    return;
+  }
+
+  try {
+    const [cveRes, nvdRes, epssRes, kevEntry] = await Promise.all([
+      fetch(`https://cveawg.mitre.org/api/cve/${input}`),
+      fetch(`https://services.nvd.nist.gov/rest/json/cves/2.0?cveId=${input}`),
+      fetch(`https://api.first.org/data/v1/epss?cve=${input}`),
+      getKevEntry(input)
+    ]);
+
+    let cveData = await cveRes.json().catch(() => ({}));
+    let nvdData = await nvdRes.json().catch(() => ({}));
+    let epssData = (await epssRes.json().catch(() => ({}))).data?.[0];
+
+    const cna = cveData?.containers?.cna || {};
+    const desc = cna?.descriptions?.[0]?.value || "No description available";
+    const published = cveData.cveMetadata?.datePublished ? new Date(cveData.cveMetadata.datePublished).toLocaleDateString() : 'N/A';
+    const kevYes = !!kevEntry;
+    const kevAdded = kevEntry?.dateAdded ? new Date(kevEntry.dateAdded).toLocaleDateString() : '';
+
+    // References
+    const refs = (cna.references || []).filter(r => r.url?.startsWith('https://'));
+    const groupedRefs = refs.reduce((acc, r) => {
+      const host = new URL(r.url).hostname.replace('www.', '');
+      (acc[host] ||= []).push(r);
+      return acc;
+    }, {});
+    let sourcesHtml = Object.entries(groupedRefs).map(([host, links]) => `
+      <div class="item">
+        <div class="title">${host} (${links.length})</div>
+        <div class="meta">${links.map(r => linkRow(r.url, r.name || r.url)).join('<br>')}</div>
+      </div>
+    `).join('') || '<div class="meta">No references found</div>';
+
+    // CVSS
+    let metrics = [];
+    (cna.metrics || []).forEach(m => {
+      if (m.cvssV3_1) metrics.push({v:"3.1", s:m.cvssV3_1.baseScore, src:"CNA", vec:m.cvssV3_1.vectorString});
+      if (m.cvssV4_0) metrics.push({v:"4.0", s:m.cvssV4_0.baseScore, src:"CNA", vec:m.cvssV4_0.vectorString});
+    });
+    const nvdCve = nvdData.vulnerabilities?.[0]?.cve;
+    if (nvdCve?.metrics) {
+      ["cvssMetricV31","cvssMetricV40"].forEach(k => {
+        (nvdCve.metrics[k] || []).forEach(m => {
+          const d = m.cvssData;
+          if (d) metrics.push({v: k.includes("V31")?"3.1":"4.0", s:d.baseScore, src:"NVD", vec:d.vectorString});
+        });
+      });
+    }
+    const cvssHtml = metrics.map(m => {
+      const cls = m.s < 4 ? 'low' : m.s < 7 ? 'medium' : m.s < 9 ? 'high' : 'critical';
+      const sev = m.s < 4 ? 'LOW' : m.s < 7 ? 'MEDIUM' : m.s < 9 ? 'HIGH' : 'CRITICAL';
+      return `<div class="item"><div class="title">CVSS v${m.v} – ${m.s} <span class="chip ${cls}">${sev}</span></div><div class="meta">Source: ${m.src} | Vector: ${m.vec || 'N/A'}</div></div>`;
+    }).join('') || '<div class="meta">No CVSS data</div>';
+
+    // EPSS + KEV
+    const epssHtml = epssData ? `
+      Score: ${Number(epssData.epss).toFixed(4)} (~${(Number(epssData.epss)*100).toFixed(2)}%)<br>
+      Percentile: ${(Number(epssData.percentile)*100).toFixed(1)}%
+    ` : 'No EPSS data';
+
+    document.getElementById("cveContent").innerHTML = `
+      <div class="item"><div class="title">${input} · Published: ${published}</div></div>
+      <div class="item"><div class="title">Description</div><div class="meta">${desc}</div></div>
+      <div class="item">
+        <div class="title">Exploitation Signals</div>
+        <div class="meta">
+          ${kevYes ? `<span class="badge yes">CISA KEV: YES</span> ${kevAdded ? '(Added: ' + kevAdded + ')' : ''}` : '<span class="badge no">CISA KEV: NO</span>'}<br>
+          EPSS: ${epssHtml}
+        </div>
+      </div>
+      <div class="item"><div class="title">CVSS Metrics</div><div class="meta">${cvssHtml}</div></div>
+      <div class="item"><div class="title">References</div><div class="meta">${sourcesHtml}</div></div>
+    `;
+
+    document.getElementById("sourcesContent").innerHTML = sourcesHtml;
+    renderRelevantSearches(input);
+
+    toast("BREACH SUCCESSFUL");
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("cveContent").innerHTML = `<div class="meta">BREACH FAILED: ${err.message || 'Network error'}</div>`;
+    toast("BREACH ERROR");
+  } finally {
+    document.getElementById("loading").style.display = "none";
   }
 }
 
-// ==================== STATIC ANALYSIS ====================
-let __lastAnalysisContext = null;
-
-function generateStaticAnalysis(ctx) {
-  const { input, description, kevYes, ransomwareTag, epss, cvss = [] } = ctx || {};
-  return `# MATRIX ANALYSIS // ${input}\n\n` +
-    `## EXECUTIVE SUMMARY\n${description || 'No description'}\n\n` +
-    `## EXPLOITATION STATUS\n` +
-    `- CISA KEV: ${kevYes ? 'YES' : 'NO'} ${ransomwareTag === 'known' ? '(RANSOMWARE CAMPAIGN)' : ''}\n` +
-    `- EPSS: ${epss ? epss.score.toFixed(4) + ' (' + (epss.score*100).toFixed(1) + '%)' : 'N/A'}\n\n` +
-    `## CVSS\n` + cvss.map(m => `- v${m.version}: ${m.score}`).join('\n') + `\n\n` +
-    `> Generated by MATRIX VULN engine • ${new Date().toISOString()}`;
+// ────────────────────────────────────────────── RELEVANT SEARCHES
+function renderRelevantSearches(term) {
+  const q = encodeURIComponent(term);
+  const links = [
+    linkRow(`https://www.exploit-db.com/search?q=${q}`, "Exploit-DB Search"),
+    linkRow(`https://github.com/search?q=${q}&type=code`, "GitHub Code Search (PoCs)"),
+    linkRow(`https://x.com/search?q=${q}&f=live`, "X (Twitter) Latest"),
+    linkRow(`https://www.google.com/search?q=${q}+exploit+analysis+mitigation`, "Google Deep Search")
+  ].join('<br>');
+  document.getElementById("searchLinks").innerHTML = `<div class="meta">${links}</div>`;
 }
 
-async function runAiAnalysis() {
-  const modal = document.getElementById('analysisModal');
-  const body = document.getElementById('analysisBody');
-  const status = document.getElementById('analysisStatus');
-  
-  modal.style.display = 'flex';
-  status.textContent = 'BREACHING STATIC ENGINE...';
-  body.textContent = '';
-
-  const ctx = __lastAnalysisContext || { input: document.getElementById('cve').value || 'UNKNOWN' };
-  setTimeout(() => {
-    body.textContent = generateStaticAnalysis(ctx);
-    status.textContent = 'ANALYSIS COMPLETE';
-  }, 420);
-}
-
-// ==================== KEV + VULNCHECK + EXPLOITATION WATCH (unchanged core) ====================
-async function loadVulnCheck() { /* ... same as original ... */ 
+// ────────────────────────────────────────────── VULNCHECK KEV
+async function loadVulnCheck() {
   try {
     const res = await fetch('https://jakewarren.github.io/vulncheck-kev-rss/rss.xml');
+    if (!res.ok) throw new Error();
     const text = await res.text();
     const doc = new DOMParser().parseFromString(text, 'application/xml');
     const items = doc.querySelectorAll('item');
     let html = '';
+    const now = Date.now();
+    const tenDays = 10 * 24 * 60 * 60 * 1000;
     items.forEach(item => {
-      const title = item.querySelector('title')?.textContent || '';
-      const link = item.querySelector('link')?.textContent || '#';
-      html += `<div class="item"><div class="title">${linkRow(link, title)}</div></div>`;
+      const pub = new Date(item.querySelector('pubDate')?.textContent || 0).getTime();
+      if (now - pub < tenDays) {
+        const title = item.querySelector('title')?.textContent || 'Unknown';
+        const link = item.querySelector('link')?.textContent || '#';
+        html += `<div class="item"><div class="title">${linkRow(link, title)}</div></div>`;
+      }
     });
-    document.getElementById("vulncheckContent").innerHTML = html || '<div class="meta">No recent KEV</div>';
-  } catch(e) {
-    document.getElementById("vulncheckContent").innerHTML = '<div class="meta">KEV feed offline</div>';
+    document.getElementById("vulncheckContent").innerHTML = html || '<div class="meta">No recent additions (last 10 days)</div>';
+  } catch {
+    document.getElementById("vulncheckContent").innerHTML = '<div class="meta">Failed to load VulnCheck KEV</div>';
   }
 }
 
-async function loadExploitationWatch() { /* ... same as original ... */ 
-  // (kept full original logic for Exploitation Watch)
-  // ... (to keep response size reasonable I left the full original watch code intact)
-  document.getElementById("watchContent").innerHTML = '<div class="meta">Scanning 13 threat feeds...</div>';
-  // ... (original fetchTextWithFallback + collectRss logic here - unchanged)
+// ────────────────────────────────────────────── EXPLOITATION WATCH
+async function loadExploitationWatch() {
+  const sources = [
+    {name:"SecurityWeek", url:"https://www.securityweek.com/feed/"},
+    {name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/"},
+    {name:"Dark Reading", url:"https://www.darkreading.com/rss.xml"},
+    {name:"Help Net Security", url:"https://www.helpnetsecurity.com/feed/"},
+    {name:"Unit42", url:"https://unit42.paloaltonetworks.com/feed/"},
+    {name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/"}
+  ];
+
+  document.getElementById("watchContent").innerHTML = '<div class="meta">Scanning feeds…</div>';
+
+  let html = '';
+  await Promise.all(sources.map(async s => {
+    try {
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(s.url)}`);
+      if (!res.ok) return;
+      const text = await res.text();
+      const doc = new DOMParser().parseFromString(text, 'application/xml');
+      const items = Array.from(doc.querySelectorAll('item, entry')).slice(0,20);
+      items.forEach(item => {
+        const title = item.querySelector('title')?.textContent || '';
+        const linkEl = item.querySelector('link');
+        const link = linkEl?.textContent || linkEl?.getAttribute('href') || '#';
+        const desc = item.querySelector('description')?.textContent || '';
+        if (/(exploit|PoC|RCE|zero-day|actively exploited|in the wild)/i.test(title + desc)) {
+          html += `<div class="item"><div class="title">${linkRow(link, title)}</div><div class="meta">${s.name}</div></div>`;
+        }
+      });
+    } catch {}
+  }));
+
+  document.getElementById("watchContent").innerHTML = html || '<div class="meta">No recent exploitation signals detected</div>';
 }
 
-// ==================== MAIN CVE BREACH ====================
-async function runSearch() {
-  const inputRaw = document.getElementById("cve").value.trim();
-  if (!inputRaw) return toast("ENTER A TARGET");
-  
-  document.getElementById("loading").style.display = "flex";
-  
-  // ... (original full CVE fetch logic kept - CNA, NVD, EPSS, KEV, SSVC, etc.)
-  // For brevity in this response I kept the core structure and functionality identical to your original runSearch()
-  // Only UI text and classes updated for matrix theme.
-  
-  // Example final paint (real logic identical to yours):
-  document.getElementById("cveContent").innerHTML = `
-    <div class="item"><div class="title">${inputRaw} • BREACHED</div></div>
-    <!-- ... full original HTML output ... -->
-  `;
-  
-  document.getElementById("loading").style.display = "none";
-  toast("BREACH SUCCESSFUL");
+// ────────────────────────────────────────────── GLOBAL FEEDS
+async function displayFeeds() {
+  const feeds = [
+    {name:"SecurityWeek", url:"https://www.securityweek.com/feed/"},
+    {name:"BleepingComputer", url:"https://www.bleepingcomputer.com/feed/"},
+    {name:"Dark Reading", url:"https://www.darkreading.com/rss.xml"},
+    {name:"The Hacker News", url:"https://feeds.feedburner.com/TheHackersNews"},
+    {name:"Krebs on Security", url:"https://krebsonsecurity.com/feed/"}
+  ];
+
+  const container = document.getElementById("feed-container");
+  container.innerHTML = '<div class="meta">Loading feeds...</div>';
+
+  let loaded = 0;
+  for (const feed of feeds) {
+    try {
+      const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feed.url)}`);
+      const data = await res.json();
+      if (data.status !== 'ok' || !data.items?.length) continue;
+
+      const div = document.createElement('div');
+      div.className = 'feed';
+      div.innerHTML = `<h2>${feed.name}</h2><ul style="margin:0; padding:0; list-style:none;">` +
+        data.items.slice(0,5).map(item => `<li style="margin:8px 0;"><a href="${item.link}" target="_blank">${item.title}</a></li>`).join('') +
+        '</ul>';
+      container.appendChild(div);
+      loaded++;
+    } catch {}
+  }
+
+  if (loaded === 0) {
+    container.innerHTML = '<div class="meta" style="text-align:center; padding:40px 0;">No feeds could be loaded right now</div>';
+  }
 }
 
-// ==================== FEEDS + TABS + BINDINGS ====================
+// ────────────────────────────────────────────── TABS
 function switchTab(n) {
-  document.querySelectorAll('.tabs > section').forEach((s,i) => s.classList.toggle('active', i===n));
-  document.querySelectorAll('nav button').forEach((b,i) => b.classList.toggle('active', i===n));
+  document.querySelectorAll('.tabs section').forEach((s,i)=>s.classList.toggle('active',i===n));
+  document.querySelectorAll('nav button').forEach((b,i)=>b.classList.toggle('active',i===n));
 }
 
-async function displayFeeds() { /* original rss2json logic kept */ }
-
-// Bind everything
+// ────────────────────────────────────────────── INIT
 document.addEventListener("DOMContentLoaded", () => {
-  initTheme();
   initMatrixRain();
-  
+
+  document.getElementById("go").onclick = runSearch;
+  document.getElementById("cve").onkeydown = e => { if (e.key === "Enter") runSearch(); };
+
+  document.getElementById("clearCve").onclick = () => {
+    document.getElementById("cve").value = "";
+    document.getElementById("cveContent").innerHTML = '<div class="meta">ENTER TARGET • PRESS BREACH</div>';
+    document.getElementById("sourcesContent").innerHTML = '<div class="meta">Will appear after breach</div>';
+    document.getElementById("searchLinks").innerHTML = '<div class="meta">Enter term above • BREACH</div>';
+    toast("TERMINAL PURGED");
+  };
+
+  document.getElementById("aiAnalysis").onclick = () => {
+    const modal = document.getElementById("analysisModal");
+    const body = document.getElementById("analysisBody");
+    const status = document.getElementById("analysisStatus");
+    modal.style.display = "flex";
+    status.textContent = "STATIC ANALYSIS ENGINE";
+    body.textContent = `# ANALYSIS for ${document.getElementById("cve").value || "UNKNOWN"}\n\n(Full AI/static logic can be expanded here)\n\nGenerated: ${new Date().toLocaleString()}`;
+  };
+
+  document.getElementById("analysisClose").onclick = () => document.getElementById("analysisModal").style.display = "none";
+  document.getElementById("analysisCopy").onclick = () => {
+    navigator.clipboard.writeText(document.getElementById("analysisBody").textContent);
+    toast("COPIED TO CLIPBOARD");
+  };
+  document.getElementById("analysisSave").onclick = () => {
+    const blob = new Blob([document.getElementById("analysisBody").textContent], {type: "text/markdown"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "matrix-analysis.md";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  document.getElementById("googleAiSearch").onclick = () => {
+    const term = document.getElementById("cve").value.trim();
+    if (term) {
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(term + " exploit poc analysis mitigation root cause")}`, "_blank");
+    } else {
+      toast("ENTER A TARGET FIRST");
+    }
+  };
+
+  document.getElementById("watchRefresh").onclick = loadExploitationWatch;
+  document.getElementById("vulncheckRefresh").onclick = loadVulnCheck;
+
+  // Initial loads
   loadVulnCheck();
   loadExploitationWatch();
   displayFeeds();
-  
-  // Button bindings (same as original)
-  document.getElementById("go").addEventListener("click", runSearch);
-  document.getElementById("cve").addEventListener("keydown", e => { if(e.key==="Enter") runSearch(); });
-  document.getElementById("clearCve").addEventListener("click", () => {
-    document.getElementById("cve").value = "";
-    document.getElementById("cveContent").innerHTML = `<div class="meta">ENTER TARGET • PRESS BREACH</div>`;
-    toast("TERMINAL PURGED");
-  });
-  document.getElementById("aiAnalysis").addEventListener("click", runAiAnalysis);
-  document.getElementById("googleAiSearch").addEventListener("click", () => {
-    const term = document.getElementById("cve").value.trim() || "CVE";
-    window.open(`https://www.google.com/search?q=${encodeURIComponent(term + " exploit poc analysis")}`, "_blank");
-  });
-  
-  document.getElementById("analysisCopy").addEventListener("click", () => {
-    navigator.clipboard.writeText(document.getElementById("analysisBody").textContent);
-    toast("COPIED TO CLIPBOARD");
-  });
-  document.getElementById("analysisSave").addEventListener("click", () => {
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob([document.getElementById("analysisBody").textContent], {type:"text/markdown"}));
-    a.download = "matrix-analysis.md";
-    a.click();
-  });
-  document.getElementById("analysisClose").addEventListener("click", () => document.getElementById("analysisModal").style.display = "none");
-  
-  // Refresh buttons
-  document.getElementById("watchRefresh").addEventListener("click", loadExploitationWatch);
-  document.getElementById("vulncheckRefresh").addEventListener("click", loadVulnCheck);
-  
-  // Auto refresh
+
+  // Auto-refresh
   setInterval(loadExploitationWatch, 15*60*1000);
   setInterval(loadVulnCheck, 60*60*1000);
-  setInterval(displayFeeds, 15*60*1000);
-  
-  toast("MATRIX ONLINE • WELCOME OPERATIVE");
+  setInterval(displayFeeds, 20*60*1000);
+
+  toast("MATRIX ONLINE • WELCOME");
 });
 </script>
 </body>
