@@ -1,6 +1,6 @@
 # Unified Vulnerability Platform
 
-This GitHub Pages site combines three tools behind one Advisory Lens–styled switcher:
+This GitHub Pages site combines three tools behind one Advisory Lens–styled switcher. A shared `platform-theme.css` gives the Vulnerability Dashboard and SSVC Scoring the same dark green palette, typography, controls, panels, tables, and responsive treatment as Advisory Lens while leaving their underlying workflows intact.
 
 1. **Advisory Analysis** — the current `CSMurray-CISA/AdvisoryAnalysis` site, unchanged.
 2. **Vulnerability Dashboard** — the original standalone `CSMurray1/VulnDashboard` `index.html`, unchanged.
@@ -32,4 +32,5 @@ The entire `oracle-data/` and `vendor-data/` directories must remain in the repo
 - `advisory-analysis.html`, `app.js`, `styles.css`: AdvisoryAnalysis
 - `vulnerability-dashboard.html`: original VulnDashboard standalone page
 - `ssvc-dashboard.html`, `oracle-data/`, `vendor-data/`: SSVC dashboard and tracked data
+- `platform-theme.css`: shared Advisory Lens visual theme for VulnDashboard and SSVC
 - `scripts/`, `requirements.txt`, `.github/workflows/`: SSVC data-refresh automation
